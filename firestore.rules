@@ -1,0 +1,62 @@
+rules_version = '2';
+// Only the owner (Wilson, the first person to claim the office) and members he approves can use the office.
+// Tasks are worked on by Cloud Functions (admin access); browsers can only create tasks and approve / send back.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function hasOwner() { return exists(/databases/$(db)/documents/config/owner); }
+    function isOwner() { return signedIn() && hasOwner() && get(/databases/$(db)/documents/config/owner).data.uid == request.auth.uid; }
+    function isMember() { return signedIn() && (isOwner() || exists(/databases/$(db)/documents/members/$(request.auth.uid))); }
+    function staff() { return ['all', 'sasa', 'nana', 'mimi', 'kiki', 'lulu', 'bobo', 'wawa']; }
+
+    match /config/owner {
+      allow read: if signedIn();
+      allow create: if signedIn() && !hasOwner()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'claimedAt']);
+      allow update, delete: if false;
+    }
+    match /members/{uid} {
+      allow read: if isMember() || (signedIn() && request.auth.uid == uid);
+      allow write: if isOwner();
+    }
+    match /requests/{uid} {
+      allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email', 'name', 'at']);
+      allow delete: if isOwner();
+    }
+    match /tasks/{id} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['title', 'who', 'auto', 'status', 'createdBy', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 2000
+        && request.resource.data.who in staff()
+        && request.resource.data.auto == false
+        && request.resource.data.status == 'queued'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update: if isOwner() && resource.data.status == 'review'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['decision', 'decisionNote', 'decidedAt'])
+        && request.resource.data.decision in ['approve', 'revise']
+        && (!('decisionNote' in request.resource.data) || (request.resource.data.decisionNote is string && request.resource.data.decisionNote.size() <= 2000));
+      allow delete: if false;
+    }
+    match /events/{id} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+    match /automations/{key} {
+      allow read: if isMember();
+      allow create: if isOwner() && request.resource.data.keys().hasOnly(['on', 'runNow']);
+      allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['on', 'runNow']);
+      allow delete: if false;
+    }
+    match /settings/{id} {
+      allow read: if isMember();
+      allow write: if isOwner() && request.resource.data.keys().hasOnly(['aprule'])
+        && request.resource.data.aprule in ['smart', 'all', 'none'];
+    }
+  }
+}

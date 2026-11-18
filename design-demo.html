@@ -1,0 +1,2056 @@
+<title>Wilson's AI Office</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: isometric office stage (day/night cycle) on the left, Wilson's command desk + event stream on the right, 7 department cards + live overview under the stage. Dark UI shell by design. */
+:root{
+  --bg:#07061a; --bg2:#0c0a24; --panel:rgba(22,19,54,.82); --line:rgba(150,140,255,.18);
+  --fg:#eceaff; --muted:#9d99c9; --ui:#3ee6ff; --ok:#4dffa6; --warn:#ffc04d; --gold:#ffd166;
+  --f-display:"Space Grotesk","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-body:"Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:14px;line-height:1.5}
+.app{max-width:1520px;margin:0 auto;padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand .k{font:500 11px var(--f-mono);letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
+.brand h1{font:700 26px/1.2 var(--f-display);margin:2px 0 0;letter-spacing:-.01em;text-wrap:balance}
+.brand h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),#ff9a8b 45%,#ff6fc8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+.chip b{color:var(--warn);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{background:transparent;color:var(--muted);border:0;padding:5px 11px;font:500 12px var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:rgba(255,209,102,.16);color:var(--gold)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+.stage{grid-column:1;grid-row:1;position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--bg2);min-width:0;box-shadow:0 30px 80px -40px rgba(255,120,160,.35)}
+.stage canvas{display:block;width:100%;cursor:default}
+.mtag{position:absolute;left:12px;top:12px;right:12px;display:flex;gap:8px;align-items:center;pointer-events:none;font-size:12px;color:var(--muted)}
+.mtag span,.clock{background:rgba(7,6,26,.72);border:1px solid var(--line);border-radius:8px;padding:4px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;backdrop-filter:blur(6px)}
+.mtag b{color:var(--fg);font-weight:600}
+.clock{position:absolute;left:12px;bottom:10px;font:500 12px var(--f-mono);color:var(--fg);pointer-events:none}
+.hint{position:absolute;right:12px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;background:rgba(7,6,26,.55);padding:2px 8px;border-radius:6px}
+.side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;gap:16px;min-width:0}
+.depts{grid-column:1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;min-width:0}
+.how{grid-column:1 / -1;grid-row:3}
+@media (max-width:1240px){.depts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}.stage,.side,.depts,.how{grid-column:1;grid-row:auto}.hint{display:none}}
+@media (max-width:440px){.depts{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:12px}
+.ph h2{font:700 13px var(--f-display);letter-spacing:.1em;text-transform:uppercase;margin:0}
+.ph .sub{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.boss{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(255,209,102,.35);border-radius:12px;background:rgba(255,209,102,.06);margin-bottom:12px;cursor:pointer}
+.boss svg{width:38px;height:38px;flex:none;filter:drop-shadow(0 0 6px rgba(255,209,102,.6))}
+.boss .dname small{font:500 11px var(--f-mono);color:var(--gold);margin-left:6px;letter-spacing:.08em}
+.boss .dact{font-size:12px;color:var(--muted);min-height:0}
+.boss>div{min-width:0}
+label.lb{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+textarea#task{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:10px;color:var(--fg);font:14px/1.5 var(--f-body);padding:10px 12px}
+textarea:focus-visible,button:focus-visible,.dept:focus-visible,.boss:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px}
+.presets button{background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:4px 11px;font:12px var(--f-body);cursor:pointer}
+.presets button:hover{border-color:rgba(255,209,102,.55)}
+.go{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,209,102,.6);background:linear-gradient(90deg,rgba(255,209,102,.22),rgba(255,111,200,.2));color:var(--fg);font:600 14px var(--f-body);cursor:pointer}
+.go:hover:not(:disabled){box-shadow:0 0 20px rgba(255,209,102,.3)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin-top:14px}
+.phases span{font-size:11px;text-align:center;padding:5px 0;border-radius:6px;background:rgba(255,255,255,.04);color:var(--muted);white-space:nowrap}
+.phases span.on{background:rgba(255,209,102,.16);color:var(--gold)}
+.phases span.ok{color:var(--ok)}
+.bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),#ff6fc8);transition:width .4s}
+.prow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.log{height:230px;overflow:auto;font:11.5px/1.5 var(--f-mono);display:flex;flex-direction:column;gap:5px}
+.ev{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;animation:in .35s ease-out}
+.ev .t{color:var(--muted)}
+.ev code{color:#cdd0ff;word-break:break-all;white-space:pre-wrap;font:inherit}
+.ev code b{color:var(--c);font-weight:500}
+@keyframes in{from{opacity:.2;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.outs{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+.outs .empty{color:var(--muted);font-size:13px;margin:0}
+.out{display:grid;grid-template-columns:8px minmax(0,1fr);gap:10px;align-items:start;font-size:13px;animation:in .35s ease-out}
+.out i{width:8px;height:8px;border-radius:50%;background:var(--c);margin-top:6px;box-shadow:0 0 8px var(--c)}
+.out b{color:var(--c);font-weight:600;margin-right:6px}
+.out.final{border:1px solid rgba(255,209,102,.5);background:rgba(255,209,102,.07);border-radius:10px;padding:10px}
+.dept{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;cursor:pointer;transition:border-color .2s}
+.dept:hover,.dept.hl{border-color:var(--c)}
+.dhead{display:flex;align-items:center;gap:10px;min-width:0}
+.dhead svg{width:34px;height:34px;flex:none;color:var(--c);filter:drop-shadow(0 0 6px var(--c))}
+.dhead>div{min-width:0}
+.dname{font:700 16px/1.1 var(--f-display)}
+.ddept{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--pc,#8a86b8);color:var(--pc,#8a86b8);white-space:nowrap;flex:none}
+.dact{font-size:12.5px;color:var(--fg);min-height:38px;line-height:1.45}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.kpis.k4{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:10px}
+.kpis div{display:flex;flex-direction:column;min-width:0}
+.kpis span{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpis b{font:600 15px var(--f-display);font-variant-numeric:tabular-nums}
+.spark{display:flex;align-items:flex-end;gap:2px;height:22px}
+.spark span{flex:1;background:var(--c);opacity:.55;border-radius:2px 2px 0 0;min-height:2px;transition:height .4s}
+.dept.ov{cursor:default;background:linear-gradient(160deg,rgba(255,209,102,.09),rgba(22,19,54,.82) 60%)}
+.ddept{white-space:normal;overflow:visible}
+.dbtn{align-self:flex-start;background:transparent;border:1px solid var(--c);color:var(--c);border-radius:999px;padding:3px 11px;font:600 12px var(--f-body);cursor:pointer}
+.dbtn:hover{background:color-mix(in srgb,var(--c) 15%,transparent)}
+.lb2{font-size:12px;color:var(--muted);margin-bottom:6px}
+.who{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.who button{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:4px 10px;font:12px var(--f-body);cursor:pointer}
+.who button i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.who button[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 20%,transparent)}
+.tip{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+.tip code{font:12px var(--f-mono);color:var(--gold)}
+.review{margin-top:12px;border:1px solid rgba(255,209,102,.65);background:rgba(255,209,102,.1);border-radius:12px;padding:10px 12px;animation:glow 1.6s ease-in-out infinite}
+.review b{color:var(--gold);display:block;font-size:13px}
+.review span{font-size:12.5px}
+.rvb{display:flex;gap:8px;margin-top:8px}
+.rvb button{flex:1;padding:7px;border-radius:8px;font:600 13px var(--f-body);cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--fg)}
+.rvb button.ap{background:rgba(77,255,166,.18);border-color:rgba(77,255,166,.6)}
+@keyframes glow{50%{box-shadow:0 0 18px rgba(255,209,102,.35)}}
+.tasks{display:flex;flex-direction:column;gap:10px;max-height:460px;overflow:auto}
+.tasks .empty{color:var(--muted);font-size:13px;margin:0}
+.task{border:1px solid var(--line);border-left:3px solid var(--c);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.task.rv{border-color:rgba(255,209,102,.65);border-left-color:var(--c)}
+.th{display:flex;align-items:center;gap:8px}
+.tw{font-size:11.5px;color:var(--c);font-weight:600}
+.tt{font-size:13px;line-height:1.45}
+.task .bar{margin-top:0;height:4px}
+.tm{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.task summary{cursor:pointer;font-size:12px;color:var(--muted)}
+.task details .outs{margin-top:8px;max-height:none}
+@media (prefers-reduced-motion:reduce){.review{animation:none}}
+.auto{font-size:12px;color:var(--muted)}
+.auto b{color:var(--gold)}
+.dbtns{display:flex;gap:6px;flex-wrap:wrap}
+.dbtn.ghost{border-color:var(--line);color:var(--fg)}
+select#aprule{width:100%;box-sizing:border-box;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:10px;color:var(--fg);font:13px var(--f-body);padding:8px 10px;margin-bottom:12px}
+select#aprule:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.tf{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tf button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 10px;font:12px var(--f-body);cursor:pointer}
+.tf button[aria-pressed="true"]{color:var(--gold);border-color:rgba(255,209,102,.55)}
+.tag{font-size:10.5px;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.07);color:var(--muted);white-space:nowrap;font-weight:400}
+.th .pill{margin-left:auto}
+dialog#roleDlg{background:#141133;color:var(--fg);border:1px solid var(--line);border-radius:16px;padding:0;width:min(700px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog#roleDlg::backdrop{background:rgba(4,3,14,.72);backdrop-filter:blur(3px)}
+.rd{padding:18px;display:flex;flex-direction:column;gap:14px}
+.rdh{display:flex;align-items:center;gap:12px}
+.rdh svg{width:44px;height:44px;color:var(--c);filter:drop-shadow(0 0 6px var(--c));flex:none}
+.rdh h3{margin:0;font:700 18px var(--f-display)}
+.rdh p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.rdh .x{margin-left:auto;background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:8px;width:32px;height:32px;cursor:pointer;flex:none}
+.rdg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.rdg{grid-template-columns:minmax(0,1fr)}}
+.rdg section{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.rd h4{margin:0 0 6px;font:600 12px var(--f-display);letter-spacing:.04em;color:var(--gold)}
+.rd ul{margin:0 0 4px;padding-left:18px;font-size:13px;line-height:1.6}
+.rd p{margin:0 0 8px;font-size:13px}
+.autos{display:flex;flex-direction:column;gap:8px}
+.au{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.au>div{flex:1;min-width:0}
+.au b{display:block;font-size:13px}
+.au small{color:var(--muted);font-size:11.5px}
+.au button{background:transparent;border:1px solid rgba(255,209,102,.5);color:var(--gold);border-radius:8px;padding:4px 10px;font:12px var(--f-body);cursor:pointer;flex:none}
+.sw{position:relative;width:36px;height:20px;flex:none}
+.sw input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer;z-index:1}
+.sw span{position:absolute;inset:0;border-radius:99px;background:rgba(255,255,255,.14);transition:background .2s}
+.sw span::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw input:checked+span{background:var(--ok)}
+.sw input:checked+span::after{transform:translateX(16px)}
+.sw input:focus-visible+span{outline:2px solid var(--gold);outline-offset:2px}
+.rdf{display:flex;justify-content:flex-end}
+.rdf .go{width:auto;padding:8px 16px}
+.how h2{font:700 18px var(--f-display);margin:0 0 4px}
+.how p.lead{color:var(--muted);margin:0 0 14px;max-width:72ch}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+@media (max-width:760px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.step h3{font:600 14px var(--f-display);margin:0 0 4px}
+.step h3 small{font:500 11px var(--f-mono);color:var(--gold);margin-right:6px}
+.step p{margin:0;color:var(--muted);font-size:13px}
+pre.code{margin:0;overflow-x:auto;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:12.5px/1.6 var(--f-mono);color:#cdd0ff}
+pre.code .c{color:#7d79a8}
+@media (prefers-reduced-motion:reduce){.ev,.out{animation:none}.bar i,.spark span{transition:none}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="k">Wilson &amp; Co. · AI Office</div>
+      <h1><em>Wilson</em> 的 AI 办公室</h1>
+    </div>
+    <div class="tools">
+      <span class="chip">演示模式 · <b>模拟事件与示例数据</b></span>
+      <div class="seg" role="group" aria-label="时间">
+        <button data-tod="auto" aria-pressed="true">自动昼夜</button>
+        <button data-tod="day" aria-pressed="false">白天</button>
+        <button data-tod="dusk" aria-pressed="false">黄昏</button>
+        <button data-tod="night" aria-pressed="false">夜晚</button>
+      </div>
+      <div class="seg" role="group" aria-label="播放速度">
+        <button data-sp="1" aria-pressed="true">1×</button>
+        <button data-sp="2" aria-pressed="false">2×</button>
+        <button data-sp="4" aria-pressed="false">4×</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="stage" id="stage">
+      <canvas id="cv" aria-label="等距视角的 AI 办公室：Wilson 的角落办公室，以及 PA、Meta 广告、社媒内容、WhatsApp 客服、视频、设计、运营七个部门"></canvas>
+      <div class="mtag"><span id="mtag">当前任务：<b>日常运营中</b></span></div>
+      <div class="clock" id="clock">15:00 · 白天</div>
+      <div class="hint">点小宠打招呼 · 扫地机器人也能点</div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <div class="ph"><h2>Wilson 的指令台</h2><span class="sub" id="qinfo">没有进行中的任务</span></div>
+        <div class="boss" id="bossCard" tabindex="0">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M11 9 L13 2 L17 7 L20 1 L23 7 L27 2 L29 9 Z" fill="#ffd166"/><circle cx="9" cy="12" r="5" fill="#e2d9c8"/><circle cx="31" cy="12" r="5" fill="#e2d9c8"/><rect x="5" y="10" width="30" height="27" rx="12" fill="#f4eee3"/><circle cx="15" cy="22" r="4.4" fill="none" stroke="#2a2340" stroke-width="1.6"/><circle cx="25" cy="22" r="4.4" fill="none" stroke="#2a2340" stroke-width="1.6"/><path d="M19.4 22 H20.6" stroke="#2a2340" stroke-width="1.6"/><circle cx="15" cy="22" r="2" fill="#1a1030"/><circle cx="25" cy="22" r="2" fill="#1a1030"/><path d="M17.5 28.5 Q20 30.5 22.5 28.5" stroke="#1a1030" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M20 31 L18.4 32.6 L20 37 L21.6 32.6 Z" fill="#ffd166"/></svg>
+          <div><div class="dname">Wilson<small>CEO</small></div><div class="dact"></div></div>
+          <span class="pill"></span>
+        </div>
+        <div class="lb2">① 派给谁？</div>
+        <div class="who" id="who" role="group" aria-label="派给谁"></div>
+        <label class="lb" for="task" id="tasklb">② Wilson，今天想让团队做什么？</label>
+        <textarea id="task" placeholder="例如：下个月办一场会员答谢直播"></textarea>
+        <div class="presets" id="presets"></div>
+        <label class="lb2" for="aprule">审批规则</label>
+        <select id="aprule">
+          <option value="smart">只有花钱、对外发布、群发才要我批准（推荐）</option>
+          <option value="all">所有任务都要我批准</option>
+          <option value="none">全部直接完成，不用批准</option>
+        </select>
+        <button class="go" id="go">③ 派出任务</button>
+        <p class="tip">派给「全公司」：Sasa 拆给各部门一起做。点名某位员工：直接交给 TA，可以同时派给好几个人。也可以直接输入 <code>@Kiki 回复今天的客户</code>。每个部门还有 ⚡ 自动化，到时间会自己开工。</p>
+        <div class="review" id="review" hidden>
+          <b>④ 待你审批</b><span id="rvTitle"></span>
+          <div class="rvb"><button type="button" class="ap" id="approve">批准 ✓</button><button type="button" id="revise">退回修改</button></div>
+        </div>
+        <div class="phases" id="phases"><span>老板下达</span><span>启动会</span><span>部门执行</span><span>汇总</span><span>老板审批</span></div>
+        <div class="bar"><i id="bar"></i></div>
+        <div class="prow"><span id="ptxt">等待 Wilson 下达任务</span><span id="pnum">0%</span></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>任务记录</h2><span class="sub" id="tcount">0 个</span></div>
+        <div class="tf" id="tf" role="group" aria-label="筛选任务"><button type="button" data-f="all" aria-pressed="true">全部</button><button type="button" data-f="me" aria-pressed="false">我派的</button><button type="button" data-f="auto" aria-pressed="false">⚡ 自动化</button><button type="button" data-f="review" aria-pressed="false">待审批</button></div>
+        <div class="tasks" id="tasks"></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>事件流</h2><span class="sub" id="evn">0 条</span></div>
+        <div class="log" id="log" aria-live="polite"></div>
+      </section>
+    </aside>
+
+    <section class="depts" id="depts" aria-label="部门看板（示例数据）"></section>
+
+    <section class="panel how">
+      <h2>这个演示怎么接上真实的 AI</h2>
+      <p class="lead">现在的动画由脚本模拟的事件驱动，自动化也是模拟的。换成真实 Agent 后，画面逻辑完全不用改：每个 ⚡ 自动化对应一个定时任务（Cloud Scheduler）或触发器，到时间就调用对应部门的 Agent，把事件写进 Firestore。</p>
+      <div class="steps">
+        <div class="step"><h3><small>01</small>每个部门一个 Agent</h3><p>Sasa 拆任务、汇总、送审；Nana 接 Meta 广告后台，Kiki 接 WhatsApp Business，Mimi、Bobo、Lulu 负责内容、视频和设计，Wawa 盯订单和流程。</p></div>
+        <div class="step"><h3><small>02</small>Agent 运行时推送事件</h3><p>每次思考、调用工具、交接、送审、批准，都发一条事件到前端。右侧「事件流」里的每一行就是一条事件。</p></div>
+        <div class="step"><h3><small>03</small>前端把事件变成动画</h3><p>tool_call 让小宠坐下干活或去拍摄区，handoff 让它带着文件走到同事那里，approved 让 Wilson 盖章、全员庆祝。</p></div>
+      </div>
+<pre class="code"><span class="c">// 接真实后端：把模拟脚本换成 WebSocket 推送的事件</span>
+const ws = new WebSocket("wss://your-backend/agents");
+ws.onmessage = (e) =&gt; {
+  const ev = JSON.parse(e.data);  <span class="c">// {"agent":"kiki","event":"tool_call","tool":"reply_whatsapp"}</span>
+  emit(ev.agent, ev.event, ev);   <span class="c">// 同一个 emit()，画面和看板自动更新</span>
+};</pre>
+    </section>
+  </main>
+  <dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>
+</div>
+
+<script>
+(() => {
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FD = "'Space Grotesk','PingFang SC','Microsoft YaHei',sans-serif";
+const FB = "Inter,'PingFang SC','Microsoft YaHei',sans-serif";
+const FM = "'JetBrains Mono',Consolas,monospace";
+const GX = 26, GY = 22, WALL = 3.6, GH = 2.5, C = {x:14, y:11.5}, RING = 4.1, PS = 1.12;
+const TEAM = ['sasa','nana','mimi','kiki','lulu','bobo','wawa'], ALL = ['wilson', ...TEAM];
+const AG = {
+  wilson:{name:'Wilson', dept:'CEO', cn:'老板', color:'#f4eee3', tag:'#ffd166', ears:'bear'},
+  sasa:{name:'Sasa', dept:'PA', cn:'总助', color:'#b48cff', zone:[8.5,1,13.5,6], ears:'cat', en:'PA', zh:'总助'},
+  nana:{name:'Nana', dept:'Meta Ads', cn:'广告投放', color:'#ff6fc8', zone:[14.5,1,19.5,6], ears:'bunny', en:'META ADS', zh:'广告投放'},
+  mimi:{name:'Mimi', dept:'Social Media', cn:'社媒内容', color:'#ff9466', zone:[20.5,1,25.5,6.5], ears:'cat', en:'SOCIAL MEDIA', zh:'社媒内容'},
+  kiki:{name:'Kiki', dept:'WhatsApp CS', cn:'客服', color:'#3fdc8a', zone:[21,8.5,25.5,13.5], ears:'dog', en:'WHATSAPP CS', zh:'客服中心'},
+  lulu:{name:'Lulu', dept:'Graphic Design', cn:'平面设计', color:'#8aa2ff', zone:[21,15,25.5,21], ears:'none', en:'DESIGN', zh:'平面设计'},
+  bobo:{name:'Bobo', dept:'Video', cn:'视频拍剪', color:'#ffc94d', zone:[1,14.5,6.5,21], ears:'bear', en:'VIDEO', zh:'拍摄剪辑'},
+  wawa:{name:'Wawa', dept:'Operations', cn:'运营经理', color:'#3ee6ff', zone:[1,8,6.5,13], ears:'round', en:'OPERATIONS', zh:'运营管理'},
+};
+const INTRO = {
+  wilson:'嗨，我是 Wilson，这家公司的老板', sasa:'我是 Sasa，Wilson 的总助，负责拆任务',
+  nana:'我是 Nana，Meta 广告投放交给我', mimi:'我是 Mimi，每天产出社媒内容',
+  kiki:'我是 Kiki，WhatsApp 客服 24 小时在线', lulu:'我是 Lulu，海报和主视觉我来做',
+  bobo:'我是 Bobo，拍视频剪视频都行', wawa:'我是 Wawa，运营经理，盯订单和流程'};
+const ROUTINE = {
+  sasa:['整理 Wilson 的日程','回复合作方邮件','准备明天的会议资料'],
+  nana:['盯广告数据','调整出价与预算','测试新受众包'],
+  mimi:['回复评论区','研究热门话题','写明天的帖子文案'],
+  kiki:['回复客户 WhatsApp','处理退换货咨询','跟进未付款订单'],
+  lulu:['修改海报细节','整理品牌素材库','画新插画'],
+  bobo:['剪辑昨天的素材','给视频调色','整理素材库'],
+  wawa:['检查今日订单','跟进物流异常','更新流程看板']};
+const QUIP = {
+  sasa:['收到，马上安排','我来跟进','日程已更新'], nana:['ROAS 起来了！','这组素材 CTR 不错','再加点预算'],
+  mimi:['这条会爆','话题标签加上','文案再改改'], kiki:['亲，马上帮您查','已发货哦～','感谢支持！'],
+  lulu:['颜色再亮一点','字体换一下','完美对齐'], bobo:['再来一条！','这个镜头好','卡点完美'],
+  wawa:['今天订单不少','物流已跟进','流程搞定']};
+const GLY = {sasa:['✓','◆','✦'], nana:['$','↑','%'], mimi:['♥','★','+'], kiki:['✓','✉','…'], lulu:['✎','◆','●'], bobo:['▶','●','✂'], wawa:['▲','■','⇄']};
+const ST = {idle:['待命','#8a86b8'], routine:['日常工作','#9d99c9'], away:['走动中','#9fd8ff'], office:['在办公室','#ffd166'], thinking:['思考中','#b48cff'], reviewing:['审阅中','#ffd166'], working:['执行任务','#3ee6ff'], waiting:['等待交接','#ffc04d'], handoff:['交接中','#ff6fc8'], meeting:['开会','#9fa8ff'], done:['已完成','#4dffa6']};
+const KPI = {
+  sasa:[{l:'今日日程',v:8,f:'i'},{l:'待办事项',v:5,f:'i'}],
+  nana:[{l:'ROAS',v:4.2,f:'x',j:0.03},{l:'今日线索',v:186,f:'i',inc:[0,2]}],
+  mimi:[{l:'今日互动',v:2140,f:'i',inc:[1,9]},{l:'新粉丝',v:96,f:'i',inc:[0,1]}],
+  kiki:[{l:'今日对话',v:236,f:'i',inc:[0,2]},{l:'平均回复',v:38,f:'s',j:1}],
+  lulu:[{l:'本周设计',v:22,f:'i'},{l:'待审稿',v:3,f:'i'}],
+  bobo:[{l:'本周成片',v:9,f:'i'},{l:'完播率',v:41,f:'p',j:0.4}],
+  wawa:[{l:'今日订单',v:412,f:'i',inc:[0,3]},{l:'准时发货',v:98.1,f:'p1',j:0.05}]};
+KPI.nana[0].b = 4.2; KPI.kiki[1].b = 38; KPI.bobo[1].b = 41; KPI.wawa[1].b = 98.1;
+
+/* ---------- places & routing ---------- */
+const angOf = p => Math.atan2(p.y-C.y, p.x-C.x);
+const place = (x,y,face) => ({pt:{x,y}, ang:angOf({x,y}), face});
+const BOSS_DOOR = [{x:6.2,y:4.9},{x:7.9,y:4.9}], BOSS_MID = {x:5.5,y:3.1};
+const bossPlace = (pt,face) => ({pt, ang:angOf(BOSS_DOOR[1]), inBoss:true, face});
+const BOSS_VISIT = bossPlace({x:3.6,y:5.5},'back'), BOSS_TV = bossPlace({x:2.6,y:1.5},'back'), BOSS_SHELF = bossPlace({x:1.4,y:2.6}), BOSS_TANK = bossPlace({x:5.7,y:1.75},'back');
+const COFFEE = place(15.0,18.5), FOOS_L = place(12.25,19.45), FOOS_R = place(15.15,19.45), SOFA = place(11.0,19.1), SHOOT = place(2.4,19.3);
+const STATION = {sasa:place(9.6,2.6,'back'), nana:place(16.0,4.2,'back'), mimi:place(22.3,5.3), lulu:place(22.7,19.95,'back'), bobo:place(5.9,19.9,'back'), wawa:place(2.4,11.6,'back')};
+ALL.forEach((id,i) => {
+  const a = AG[id];
+  if(id==='wilson'){a.seat = {x:3.3,y:2.8}; a.home = bossPlace(a.seat)}
+  else {
+    const [x0,y0,x1,y1] = a.zone;
+    a.cx = (x0+x1)/2; a.cy = (y0+y1)/2; a.seat = {x:x0+2.7, y:y0+2.8};
+    a.ang = angOf(a.seat); a.home = {pt:a.seat, ang:a.ang};
+    a.station = STATION[id] || null;
+    const vp = {x:a.seat.x-Math.cos(a.ang)*1.3, y:a.seat.y-Math.sin(a.ang)*1.3};
+    a.visitPlace = {pt:vp, ang:a.ang, face:(a.seat.x+a.seat.y < vp.x+vp.y) ? 'back' : null};
+  }
+  a.pos = {...a.seat}; a.path = []; a.res = null; a.z = 0; a.dir = 0; a.sdx = 0; a.sdy = 1; a.loc = a.home; a.facePl = null;
+  a.state = id==='wilson' ? 'office' : 'routine';
+  a.action = id==='wilson' ? '在办公室处理邮件' : pickR0(ROUTINE[id]);
+  a.bubble = null; a.carry = false; a.cup = false; a.phone = false; a.done = 0; a.say = null; a.jump = 0; a.phase = i*1.7;
+  a.act = Array(18).fill(0);
+});
+function pickR0(arr){return arr[0]}
+// HQ meeting spots: evenly spread by home angle
+(() => {
+  const sorted = TEAM.slice().sort((p,q)=>AG[p].ang-AG[q].ang);
+  sorted.forEach(id => {
+    const a = AG[id], an = a.ang, pt = {x:C.x+Math.cos(an)*2.35, y:C.y+Math.sin(an)*2.35};
+    a.spotPlace = {pt, ang:an, face:(pt.x+pt.y > C.x+C.y) ? 'back' : null};
+  });
+})();
+function angDiff(a,b){let d=b-a; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; return d}
+function arc(a1,a2){
+  const d = angDiff(a1,a2), n = Math.max(1, Math.ceil(Math.abs(d)/(Math.PI/4))), pts = [];
+  for(let k=0;k<=n;k++){const t=a1+d*k/n; pts.push({x:C.x+Math.cos(t)*RING, y:C.y+Math.sin(t)*RING})}
+  return pts;
+}
+function pathBetween(a,b){
+  if(a.inBoss && b.inBoss) return [BOSS_MID, b.pt];
+  const pts = [];
+  if(a.inBoss) pts.push(BOSS_MID, ...BOSS_DOOR);
+  if(Math.abs(angDiff(a.ang,b.ang)) > 0.9) pts.push(...arc(a.ang,b.ang));
+  if(b.inBoss) pts.push(BOSS_DOOR[1], BOSS_DOOR[0]);
+  pts.push(b.pt);
+  return pts;
+}
+
+/* ---------- scenarios ---------- */
+const SCN = [
+ {chip:'新品上市', title:'下周五上市新品「玫瑰精华液」，全渠道推广',
+  work:{
+   lulu:{sub:'主视觉与广告素材', tools:[['moodboard','整理视觉方向'],['design_kv','在画架上画主视觉 KV',1],['export_sizes','导出 Feed / Story / Reels 尺寸']], out:'主视觉 1 套 + 12 个尺寸的广告素材'},
+   bobo:{sub:'产品短视频', tools:[['write_shotlist','写分镜脚本'],['shoot_video','在摄影棚拍产品开箱',1],['edit_cut','剪辑 15s / 30s 两版']], out:'15s + 30s 两版短视频，含字幕与 BGM'},
+   nana:{sub:'Meta 广告投放', tools:[['build_audience','搭建受众包'],['setup_campaign','建立广告组并上传素材'],['set_budget','分配预算与出价',1]], out:'3 个广告组 + 6 套素材 A/B 测试，日预算已设定'},
+   mimi:{sub:'社媒内容排期', tools:[['plan_calendar','排 7 天内容日历'],['write_captions','写文案与话题标签'],['shoot_reel','在补光灯前拍预热 Reels',1]], out:'7 天内容日历：4 条帖子 + 3 条 Reels + 每日 Story'},
+   kiki:{sub:'WhatsApp 客服准备', tools:[['write_faq','整理新品常见问题'],['set_quick_replies','设置快捷回复'],['broadcast_list','准备老客户群发名单']], out:'FAQ 18 条 + 快捷回复模板，老客户群发名单 1,200 人'},
+   wawa:{sub:'库存与发货', tools:[['check_stock','盘点库存'],['plan_fulfil','安排发货排期'],['update_board','更新流程看板',1]], out:'首批 800 瓶入仓，上市当天 15:00 前下单当日发货'}},
+  handoffs:[{from:'lulu',after:1,to:'nana',before:1,msg:'主视觉 KV'},{from:'lulu',after:1,to:'mimi',before:1,msg:'主视觉 KV'},{from:'bobo',after:2,to:'nana',before:2,msg:'短视频成片'},{from:'wawa',after:0,to:'kiki',before:1,msg:'库存与发货时间'}],
+  final:'《玫瑰精华液上市作战方案》：视觉、视频、广告、社媒、客服、库存六部分已合并，下周五正式上市'},
+ {chip:'周末闪购', title:'这个周末办 48 小时闪购，全场 8 折',
+  work:{
+   lulu:{sub:'闪购海报', tools:[['design_banner','设计倒计时海报',1],['resize_assets','适配各渠道尺寸']], out:'倒计时海报 + 8 个渠道尺寸'},
+   nana:{sub:'再营销广告', tools:[['pull_audience','拉取再营销受众'],['launch_ads','上线闪购广告']], out:'再营销受众 3.2 万人，闪购广告已排期周六 00:00 上线'},
+   bobo:{sub:'促销短片', tools:[['shoot_promo','拍 10 秒促销片',1],['edit_promo','快速剪辑加字幕']], out:'10 秒促销短片 2 条（竖版 + 方版）'},
+   mimi:{sub:'倒计时内容', tools:[['post_teaser','发布预告帖'],['plan_live','安排直播预告',1]], out:'预告帖 + 倒计时 Story 3 天 + 周六晚 8 点直播'},
+   kiki:{sub:'客服群发', tools:[['broadcast','WhatsApp 群发优惠码'],['prep_scripts','准备订单答疑话术']], out:'群发 2,600 位老客户，答疑话术 12 条'},
+   wawa:{sub:'订单高峰准备', tools:[['forecast_orders','预测订单量'],['add_packers','加派打包人手',1]], out:'预计 1,800 单，周末加派 4 人打包，48 小时内发完'}},
+  handoffs:[{from:'lulu',after:0,to:'nana',before:1,msg:'倒计时海报'},{from:'lulu',after:0,to:'kiki',before:0,msg:'倒计时海报'},{from:'bobo',after:1,to:'mimi',before:1,msg:'促销短片'}],
+  final:'《周末 48 小时闪购方案》：海报、广告、短片、群发、发货全部就绪，周六 00:00 开抢'},
+ {chip:'月度复盘', title:'准备 11 月复盘：每个部门交数据和下月计划',
+  work:{
+   nana:{sub:'广告复盘', tools:[['pull_ads_report','导出广告报表'],['analyze_roas','分析 ROAS 与 CPA',1]], out:'ROAS 4.2×（环比 +0.6），Reels 素材 CPA 最低，下月预算倾斜 20%'},
+   mimi:{sub:'社媒复盘', tools:[['pull_insights','导出社媒数据'],['top_posts','整理爆款内容']], out:'粉丝 +3,420，互动率 6.1%，Top 3 帖子都是开箱类'},
+   kiki:{sub:'客服复盘', tools:[['export_chats','导出客服对话'],['tag_issues','归类客户问题']], out:'对话 6,830 个，平均首次回复 38 秒，物流问题占 41%'},
+   bobo:{sub:'视频复盘', tools:[['count_output','统计成片数据'],['best_clips','挑出高完播视频']], out:'本月成片 36 条，最高完播率 58%（开箱系列）'},
+   lulu:{sub:'设计复盘', tools:[['count_designs','统计设计产出'],['update_guide','更新视觉规范']], out:'设计 94 张，新版品牌色板与模板已更新'},
+   wawa:{sub:'运营复盘', tools:[['pull_orders','拉取订单与物流数据'],['build_board','整理改进事项',1]], out:'订单 11,240 单，准时发货 98.1%，物流提速列为下月第一优先'}},
+  handoffs:[{from:'kiki',after:1,to:'wawa',before:1,msg:'物流问题明细'}],
+  final:'《11 月复盘报告》：6 个部门数据合并成 18 页，下月重点是 Reels 素材和物流提速'}
+];
+function customScenario(text){
+  const t = text.length > 24 ? text.slice(0,24)+'…' : text;
+  return {title:text, work:{
+    lulu:{sub:'视觉物料', tools:[['design_visual','设计主视觉',1],['export_sizes','导出各平台尺寸']], out:`「${t}」主视觉 + 各平台尺寸素材`},
+    bobo:{sub:'视频内容', tools:[['shoot_clip','拍摄素材',1],['edit_clip','剪辑成片']], out:'15 秒短视频 1 条，适配 Reels / Story'},
+    nana:{sub:'广告投放计划', tools:[['research_audience','分析目标受众'],['draft_ads','规划广告组与预算']], out:`「${t}」Meta 广告：2 个受众包 + 4 套素材测试`},
+    mimi:{sub:'社媒内容', tools:[['plan_posts','排内容日历'],['write_captions','写文案与话题']], out:`「${t}」社媒：3 条帖子 + 2 条 Reels`},
+    kiki:{sub:'客服话术', tools:[['write_scripts','准备客服话术'],['notify_clients','WhatsApp 通知老客户']], out:'快捷回复 10 条，老客户通知已排期'},
+    wawa:{sub:'执行排期', tools:[['check_resources','盘点人手与库存'],['build_timeline','排出里程碑',1]], out:`「${t}」拆成 5 个里程碑，预计 3 周完成`}},
+   handoffs:[{from:'lulu',after:0,to:'nana',before:1,msg:'主视觉'},{from:'bobo',after:1,to:'mimi',before:1,msg:'短视频成片'},{from:'wawa',after:1,to:'kiki',before:1,msg:'执行时间线'}],
+   final:`「${t}」跨部门方案已汇总，共 6 部分`};
+}
+
+/* ---------- utils ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function rgb(h){const n=parseInt(h.slice(1),16);return [n>>16&255,n>>8&255,n&255]}
+function rgba(h,a){const [r,g,b]=rgb(h);return `rgba(${r},${g},${b},${a})`}
+function shade(h,f){const [r,g,b]=rgb(h);const m=v=>Math.round(f<0?v*(1+f):v+(255-v)*f);return `rgb(${m(r)},${m(g)},${m(b)})`}
+function lerp2(a,b,t){return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]}
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const pickR = arr => arr[Math.floor(Math.random()*arr.length)];
+const easeBack = x => {const c1 = 1.70158, c3 = c1+1; return 1 + c3*Math.pow(x-1,3) + c1*Math.pow(x-1,2)};
+
+/* ---------- canvas & projection ---------- */
+const stage = $('#stage'), cv = $('#cv'), mainCtx = cv.getContext('2d');
+let ctx = mainCtx;
+const lay = document.createElement('canvas'), lctx = lay.getContext('2d');
+const BG = {day:document.createElement('canvas'), dusk:document.createElement('canvas'), night:document.createElement('canvas')};
+let W=800,H=500,TW=34,TH=17,OX=400,OY=80,DPR=1,vig=null;
+const P = (x,y,z=0) => [OX+(x-y)*TW/2, OY+(x+y)*TH/2 - z*TH];
+
+function poly(c,pts,fill,stroke,lw){c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=lw||1;c.stroke()}}
+function line(c,a,b){c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke()}
+function box(c,x0,y0,x1,y1,z,h,col,o={}){
+  poly(c,[P(x0,y1,z),P(x1,y1,z),P(x1,y1,z+h),P(x0,y1,z+h)],o.left||shade(col,-0.18),o.edge,1);
+  poly(c,[P(x1,y0,z),P(x1,y1,z),P(x1,y1,z+h),P(x1,y0,z+h)],o.right||shade(col,-0.36),o.edge,1);
+  poly(c,[P(x0,y0,z+h),P(x1,y0,z+h),P(x1,y1,z+h),P(x0,y1,z+h)],o.top||col,o.edge,1);
+}
+function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function ell(x,y,rx,ry,fill){ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(x,y,Math.max(0.1,rx),Math.max(0.1,ry),0,0,Math.PI*2); ctx.fill()}
+function planeY(y,x0,x1,z0,z1,fn){const p=P(x0,y,z1); ctx.save(); ctx.translate(p[0],p[1]); ctx.transform(1,0.5,0,1,0,0); fn((x1-x0)*TW/2,(z1-z0)*TH); ctx.restore()}
+function planeX(x,y0,y1,z0,z1,fn){const p=P(x,y1,z1); ctx.save(); ctx.translate(p[0],p[1]); ctx.transform(1,-0.5,0,1,0,0); fn((y1-y0)*TW/2,(z1-z0)*TH); ctx.restore()}
+function pool(g,x,y,r,col,al){
+  const [px,py] = P(x,y), R = r*TW*0.7;
+  g.save(); g.globalCompositeOperation = 'lighter'; g.translate(px,py); g.scale(1,0.5);
+  const gr = g.createRadialGradient(0,0,0,0,0,R); gr.addColorStop(0,rgba(col,al)); gr.addColorStop(1,rgba(col,0));
+  g.fillStyle = gr; g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fill(); g.restore();
+}
+function floorText(g,txt,x,y,size,col,glow,weight){
+  const p = P(x,y); g.save(); g.translate(p[0],p[1]); g.transform(1,0.5,-1,0.5,0,0);
+  g.font = `${weight||700} ${size}px ${FD}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  if(glow){g.shadowColor = col; g.shadowBlur = glow} g.fillStyle = col; g.fillText(txt,0,0); g.restore();
+}
+
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio||1);
+  W = stage.clientWidth; TW = W/((GX+GY)/2+1.4); TH = TW/2; OX = (GY/2+0.7)*TW; OY = 4.6*TH + 8;
+  H = Math.round(OY + (GX+GY)/2*TH + TH*1.3);
+  cv.style.height = H+'px'; cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  lay.width = cv.width; lay.height = cv.height;
+  vig = mainCtx.createRadialGradient(W/2,H*0.55,Math.min(W,H)*0.35,W/2,H*0.55,Math.max(W,H)*0.75);
+  vig.addColorStop(0,'rgba(4,3,14,0)'); vig.addColorStop(1,'rgba(4,3,14,.6)');
+  renderAllBG();
+}
+
+/* ---------- static backgrounds: one per time of day, cross-faded ---------- */
+const PAL = {
+  day:{sky:[[0.3,[226,242,255]],[1.3,[176,218,252]],[2.4,[128,186,246]],[3.35,[96,152,236]]], stars:0, far:'rgba(150,178,218,.9)', near:'#8ea3cc', lit:0, glassWin:0.35, neon:0, frame:'#f6f4fc', frameHi:'rgba(255,255,255,.9)', base:'#e4e0f0',
+       fA:'#e2dcee', fB:'#d9d2e8', fLine:'rgba(90,80,150,.10)', walnut:'#a27352', walnutLine:'rgba(70,40,20,.22)', rug:'#b0566f', carpet:0.22, dark:true, spill:'#fff6e0', spillA:0.2, pool:0, hq:'rgba(62,140,255,.10)', lounge:'#d5cbf0', loungeLine:'rgba(140,100,70,.4)', bgTop:'#cfe4fb', bgBot:'#b8b0d8'},
+  dusk:{sky:[[0.3,[255,160,128]],[0.8,[222,104,132]],[1.5,[128,58,142]],[2.4,[50,32,104]],[3.35,[16,12,44]]], stars:0.5, far:'rgba(70,40,120,.85)', near:'#1a1438', lit:0.3, glassWin:0, neon:0.7, frame:'#2c2656', frameHi:'rgba(255,190,170,.55)', base:'#272150',
+       fA:'#3d3668', fB:'#383162', fLine:'rgba(255,200,220,.07)', walnut:'#6a4834', walnutLine:'rgba(0,0,0,.28)', rug:'#62304a', carpet:0.14, dark:false, spill:'#ff8ca0', spillA:0.08, pool:0.6, hq:'rgba(62,230,255,.06)', lounge:'#3d3474', loungeLine:'rgba(255,190,140,.3)', bgTop:'#1a1236', bgBot:'#0c0a22'},
+  night:{sky:[[0.3,[44,34,98]],[1.4,[24,18,66]],[3.35,[8,7,30]]], stars:1, far:'rgba(40,28,90,.9)', near:'#0c0a26', lit:0.45, glassWin:0, neon:1, frame:'#1d1a48', frameHi:'rgba(160,170,255,.4)', base:'#14123a',
+       fA:'#17153e', fB:'#141235', fLine:'rgba(160,150,255,.05)', walnut:'#3a2820', walnutLine:'rgba(0,0,0,.3)', rug:'#4c2234', carpet:0.1, dark:false, spill:'#7a8cff', spillA:0.05, pool:1, hq:'rgba(62,230,255,.05)', lounge:'#221d47', loungeLine:'rgba(255,190,140,.3)', bgTop:'#0b0924', bgBot:'#060515'}
+};
+let seed = 11; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+const pickS = arr => arr[Math.floor(rnd()*arr.length)];
+function skyColor(stops,z){
+  for(let i=0;i<stops.length-1;i++){const [z0,c0]=stops[i],[z1,c1]=stops[i+1]; if(z<=z1){const t=Math.max(0,(z-z0)/(z1-z0)); return `rgb(${c0.map((v,k)=>Math.round(v+(c1[k]-v)*t)).join(',')})`}}
+  const l = stops[stops.length-1][1]; return `rgb(${l.join(',')})`;
+}
+function drawWall(g,side,len,pl){
+  const WP = (u,z) => side==='R' ? P(u,0,z) : P(0,u,z), W0 = 0.3, W1 = 3.35;
+  poly(g,[WP(0,0),WP(len,0),WP(len,WALL),WP(0,WALL)], pl.base);
+  const n = 28;
+  for(let i=0;i<n;i++){const za=W0+(W1-W0)*i/n, zb=W0+(W1-W0)*(i+1)/n; poly(g,[WP(0,za),WP(len,za),WP(len,zb+0.02),WP(0,zb+0.02)], skyColor(pl.sky,(za+zb)/2))}
+  for(let k=0;k<len*4;k++){const p = WP(rnd()*len, 2.2+rnd()*1.1), al = (0.25+rnd()*0.6)*pl.stars; if(al>0.01){g.fillStyle = `rgba(255,255,255,${al})`; g.fillRect(p[0],p[1],1,1)}}
+  let u = 0;
+  while(u<len){const w = 0.5+rnd()*1.2, uw = Math.min(len,u+w), top = W0+0.6+rnd()*1.5; poly(g,[WP(u,W0),WP(uw,W0),WP(uw,top),WP(u,top)],pl.far); u = uw+rnd()*0.2}
+  u = 0;
+  while(u<len){
+    const w = 0.6+rnd()*1.3, uw = Math.min(len,u+w), top = W0+0.25+rnd()*1.25;
+    poly(g,[WP(u,W0),WP(uw,W0),WP(uw,top),WP(u,top)],pl.near);
+    const ws = Math.max(1,TW*0.055);
+    for(let wu=u+0.1; wu<uw-0.08; wu+=0.17) for(let wz=W0+0.12; wz<top-0.08; wz+=0.15){
+      const r1 = rnd(), col = pickS(['rgba(255,214,150,.9)','rgba(255,190,120,.75)','rgba(150,220,255,.7)','rgba(255,130,200,.6)']), p = WP(wu,wz);
+      if(r1 < pl.lit){g.fillStyle = col; g.fillRect(p[0],p[1],ws,ws)}
+      else if(r1 < pl.glassWin){g.fillStyle = 'rgba(235,245,255,.55)'; g.fillRect(p[0],p[1],ws,ws)}
+    }
+    const r2 = rnd(), c = pickS(['#ff5cc0','#3ee6ff','#b48cff','#ffd166']);
+    if(r2<0.28 && pl.neon>0){g.save(); g.globalAlpha = pl.neon; g.shadowColor = c; g.shadowBlur = 8; g.strokeStyle = c; g.lineWidth = 1.5; line(g,WP(u+0.08,top+0.04),WP(uw-0.08,top+0.04)); g.restore()}
+    u = uw+0.04+rnd()*0.15;
+  }
+  for(let s=2.5; s<len; s+=6) poly(g,[WP(s,W0),WP(s+0.7,W0),WP(s+1.9,W1),WP(s+1.2,W1)],'rgba(255,255,255,.06)');
+  g.strokeStyle = pl.frame; g.lineWidth = Math.max(2,TW*0.1); for(let m=0;m<=len;m+=2) line(g,WP(m,W0),WP(m,W1));
+  g.lineWidth = Math.max(1,TW*0.05); line(g,WP(0,2.75),WP(len,2.75));
+  g.lineWidth = Math.max(3,TW*0.16); line(g,WP(0,W0),WP(len,W0)); line(g,WP(0,W1),WP(len,W1));
+  g.save(); if(!pl.dark){g.shadowColor = pl.frameHi; g.shadowBlur = 10} g.strokeStyle = pl.frameHi; g.lineWidth = 1.5; line(g,WP(0,WALL),WP(len,WALL)); g.restore();
+}
+function renderBG(cvs,mode){
+  const pl = PAL[mode];
+  cvs.width = cv.width; cvs.height = cv.height;
+  const g = cvs.getContext('2d'); g.setTransform(DPR,0,0,DPR,0,0); seed = 11;
+  const grd = g.createLinearGradient(0,0,0,H); grd.addColorStop(0,pl.bgTop); grd.addColorStop(1,pl.bgBot);
+  g.fillStyle = grd; g.fillRect(0,0,W,H);
+  drawWall(g,'L',GY,pl); drawWall(g,'R',GX,pl);
+  for(let i=0;i<GX;i+=2) for(let j=0;j<GY;j+=2) poly(g,[P(i,j),P(i+2,j),P(i+2,j+2),P(i,j+2)], ((i+j)/2)%2?pl.fA:pl.fB, pl.fLine, 1);
+  // Wilson's office: walnut floor + rug
+  poly(g,[P(0,0),P(7,0),P(7,6.5),P(0,6.5)],pl.walnut);
+  g.strokeStyle = pl.walnutLine; g.lineWidth = 1;
+  for(let y=0.45;y<6.5;y+=0.45){line(g,P(0,y),P(7,y)); const jx = 0.6+rnd()*5.6; line(g,P(jx,y-0.45),P(jx,y))}
+  poly(g,[P(1.3,3.1),P(5.5,3.1),P(5.5,6.1),P(1.3,6.1)],pl.rug);
+  poly(g,[P(1.5,3.3),P(5.3,3.3),P(5.3,5.9),P(1.5,5.9)],null,'rgba(255,209,102,.5)',1.2);
+  floorText(g,'CEO',3.4,5.55,TW*0.42,'rgba(255,209,102,.6)',0);
+  // department carpets + labels
+  TEAM.forEach(id => {
+    const a = AG[id], [x0,y0,x1,y1] = a.zone, c = a.color;
+    poly(g,[P(x0,y0),P(x1,y0),P(x1,y1),P(x0,y1)], rgba(c,pl.carpet));
+    g.save(); if(!pl.dark){g.shadowColor = c; g.shadowBlur = 8} poly(g,[P(x0,y0),P(x1,y0),P(x1,y1),P(x0,y1)], null, pl.dark?rgba(c,.75):rgba(c,.6), 1.4); g.restore();
+    poly(g,[P(x0+.3,y0+.3),P(x1-.3,y0+.3),P(x1-.3,y1-.3),P(x0+.3,y1-.3)], null, rgba(c,pl.dark?.35:.18), 1);
+  });
+  // lounge rug
+  poly(g,[P(9.2,17.2),P(16.8,17.2),P(16.8,21.4),P(9.2,21.4)],pl.lounge);
+  poly(g,[P(9.45,17.45),P(16.55,17.45),P(16.55,21.15),P(9.45,21.15)],null,pl.loungeLine,1);
+  floorText(g,'LOUNGE · 茶水间',13.0,21.0,TW*0.34,pl.dark?'rgba(120,80,60,.8)':'rgba(255,200,150,.7)',0);
+  // HQ rug
+  const [hx,hy] = P(C.x,C.y); g.fillStyle = pl.hq; g.beginPath(); g.ellipse(hx,hy,3.1*0.7071*TW,3.1*0.7071*TH,0,0,Math.PI*2); g.fill();
+  // window light spill / sun shafts
+  for(let k=0;k<6;k++){const al = pl.spillA*(1-k/6); poly(g,[P(0,k*0.5),P(GX,k*0.5),P(GX,(k+1)*0.5),P(0,(k+1)*0.5)],rgba(pl.spill,al)); poly(g,[P(k*0.5,0),P((k+1)*0.5,0),P((k+1)*0.5,GY),P(k*0.5,GY)],rgba(pl.spill,al))}
+  if(mode==='day'){
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for(let s=8.5; s<GX-1; s+=4.2) poly(g,[P(s,0),P(s+1.3,0),P(s+3.4,5.5),P(s+2.1,5.5)],'rgba(255,248,225,.12)');
+    for(let s=7.5; s<GY-1; s+=4.6) poly(g,[P(0,s),P(0,s+1.3),P(4.2,s+3.0),P(4.2,s+1.7)],'rgba(255,248,225,.09)');
+    g.restore();
+  }
+  // warm light pools (lamps on at dusk/night)
+  if(pl.pool>0){
+    const k = pl.pool;
+    pool(g,3.3,4.2,3.4,'#ffb86b',0.2*k);
+    TEAM.forEach(id => {const [x0,y0] = AG[id].zone; pool(g,x0+2.7,y0+2.0,3,AG[id].color,0.11*k); pool(g,x0+2.7,y0+1.8,1.8,'#ffcf99',0.08*k)});
+    pool(g,C.x,C.y,3.4,'#ffd9a0',0.12*k);
+    pool(g,12.5,19,3.6,'#ffb86b',0.15*k);
+  }
+}
+function renderAllBG(){renderBG(BG.day,'day'); renderBG(BG.dusk,'dusk'); renderBG(BG.night,'night')}
+
+/* ---------- time of day ---------- */
+let todMode = 'auto', cyc = 0.3;
+const WT = {d:1,k:0,n:0}, PURE = {d:{d:1,k:0,n:0}, k:{d:0,k:1,n:0}, n:{d:0,k:0,n:1}};
+const KEYS = [[0,'d'],[0.3,'d'],[0.42,'k'],[0.55,'n'],[0.85,'n'],[0.95,'k'],[1,'d']];
+function targetW(){
+  if(todMode==='day') return PURE.d; if(todMode==='dusk') return PURE.k; if(todMode==='night') return PURE.n;
+  for(let i=0;i<KEYS.length-1;i++){const [f0,s0] = KEYS[i], [f1,s1] = KEYS[i+1]; if(cyc<=f1){const t = (cyc-f0)/(f1-f0||1), a = PURE[s0], b = PURE[s1]; return {d:a.d+(b.d-a.d)*t, k:a.k+(b.k-a.k)*t, n:a.n+(b.n-a.n)*t}}}
+  return PURE.d;
+}
+const nightK = () => WT.k*0.6 + WT.n;
+function clockText(){
+  let hr;
+  if(todMode==='day') hr = 11; else if(todMode==='dusk') hr = 18.6; else if(todMode==='night') hr = 22.5; else hr = (9 + cyc*24) % 24;
+  const hh = Math.floor(hr), mm = Math.floor((hr-hh)*60);
+  const lab = WT.n>0.6 ? '夜晚' : WT.k>0.45 ? (hr<12 ? '清晨' : '黄昏') : '白天';
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} · ${lab}`;
+}
+
+/* ---------- simulation state ---------- */
+let simT = 0, speed = 1, hq = 0.15, hqTarget = 0.15, hl = null, total = 1, prog = 0, busy = false;
+const timers = [], beams = [], parts = [], sparks = [], confetti = [], emotes = [];
+let banner = null, stamp = null, mouse = null, zoom = 1.025; const cam = {x:0, y:0};
+const foos = {on:false}, fx = {ring:false, rec:false, paint:false, ads:false, board:false};
+const bot = {pos:{x:14,y:15.9}, tg:null, ang:0, spin:0, wait:1};
+const BOT_PTS = [[10,8],[18,8.2],[19,15],[9.2,15],[14,16],[7.6,8],[7.8,14],[19.6,7.6],[20,15.3],[14,7.3],[11,12.5],[17.5,11]];
+const CLOUDS = Array.from({length:7},(_,i)=>({side:i%2?'L':'R', u:(i*5.3)%22, z:2.6+((i*37)%5)*0.12, s:0.7+((i*13)%5)*0.12, v:0.12+((i*7)%4)*0.03}));
+const sleep = ms => new Promise(r => timers.push({t:simT+ms/1000, r}));
+function walk(id, pts){const a=AG[id]; a.path = pts.map(p=>({...p})); return new Promise(r=>a.res=r)}
+function go(id, plc){const a = AG[id], pts = pathBetween(a.loc, plc); a.loc = plc; a.facePl = plc.face||null; return walk(id, pts)}
+const atSeat = id => {const a = AG[id]; return !a.path.length && Math.hypot(a.pos.x-a.seat.x,a.pos.y-a.seat.y)<0.15};
+const atP = (id,pl) => {const a = AG[id]; return !!pl && !a.path.length && Math.hypot(a.pos.x-pl.pt.x,a.pos.y-pl.pt.y)<0.2};
+function beam(from,to,color){beams.push({a:{...from},b:{...to},c:color,t0:simT,dur:2.6,hit:false})}
+function pop(id,g,c,n=1){const now = performance.now(); for(let k=0;k<n;k++) emotes.push({id,g,c,t0:now+k*110,dur:1500,dx:(k-(n-1)/2)*0.55})}
+function burst(x,y,cols,n=22,pw=140){
+  if(RM) n = Math.ceil(n/3);
+  for(let k=0;k<n;k++){const an = Math.random()*Math.PI*2, sp = pw*(0.4+Math.random()*0.8);
+    sparks.push({x,y,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp-50,g:160,life:0.9,max:0.9,c:pickR(cols),s:Math.max(2,TW*0.1)})}
+}
+function celebrate(t1,t2){
+  const cols = ['#b48cff','#3ee6ff','#ff6fc8','#ffc94d','#4dffa6','#ffffff','#ffd166','#ff9466'];
+  [[C.x,C.y,1.2],[3.5,4,1.6]].forEach(([x,y,z],j) => {
+    const [px,py] = P(x,y,z);
+    for(let k=0;k<(RM?20:130);k++) confetti.push({x:px,y:py,vx:(Math.random()-0.5)*W*(j?0.6:0.9),vy:-(180+Math.random()*340),rot:Math.random()*6,vr:(Math.random()-0.5)*14,c:pickR(cols),w:TW*(0.12+Math.random()*0.12),h:TW*(0.06+Math.random()*0.06),life:3.4});
+  });
+  banner = {t0:performance.now(), t1, t2};
+}
+function headPos(id){const a = AG[id], [px,py] = P(a.pos.x,a.pos.y,a.z); return [px, py - TW*0.5*PS*1.2]}
+function react(id,ev){
+  const a = AG[id], [px,py] = headPos(id);
+  if(ev==='received'){pop(id,'!','#ffc04d'); a.surprise = performance.now()+1000}
+  else if(ev==='plan') pop(id,'✦','#ffe066');
+  else if(ev==='assigned') pop(id,'♪',a.color);
+  else if(ev==='handoff') pop(id,'✉','#ffffff');
+  else if(ev==='assign_task') pop(id,'✉','#ffd166');
+  else if(ev==='done'){pop(id,'★','#4dffa6',3); burst(px,py,[a.color,'#4dffa6','#ffffff'])}
+  else if(ev==='kickoff'){const [hx,hy] = P(C.x,C.y,1); burst(hx,hy,['#b48cff','#3ee6ff','#ff6fc8','#ffc94d'],40,200)}
+  else if(ev==='approved'){pop(id,'✔','#ffd166'); stamp = {t0:performance.now()}; burst(px,py,['#ffd166','#ffffff'],30,180); celebrate()}
+}
+
+function update(dt,rdt){
+  for(let i=timers.length-1;i>=0;i--) if(simT>=timers[i].t){const r=timers[i].r; timers.splice(i,1); r()}
+  ALL.forEach(id => {
+    const a = AG[id];
+    if(a.path.length){
+      const tg = a.path[0], dx = tg.x-a.pos.x, dy = tg.y-a.pos.y, d = Math.hypot(dx,dy), step = 3.4*dt;
+      if(d>0.001){const k = Math.min(1,rdt*12); a.sdx += ((dx-dy)/d/1.414-a.sdx)*k; a.sdy += ((dx+dy)/d/1.414-a.sdy)*k; a.dir = a.sdx}
+      if(d<=step){a.pos.x=tg.x; a.pos.y=tg.y; a.path.shift(); if(!a.path.length && a.res){const r=a.res; a.res=null; r()}}
+      else {a.pos.x += dx/d*step; a.pos.y += dy/d*step}
+      if(!RM && Math.random() < rdt*8){const [fx0,fy0] = P(a.pos.x,a.pos.y,0); sparks.push({x:fx0+(Math.random()-0.5)*TW*0.4,y:fy0,vx:(Math.random()-0.5)*14,vy:-10-Math.random()*12,g:0,life:0.6,max:0.6,c:'#a9a4e0',s:Math.max(2,TW*0.1),dust:true})}
+    } else a.dir = (a.dir||0)*0.9;
+    if(a.jump>0) a.jump = Math.max(0, a.jump-rdt);
+    if(!RM && id!=='wilson'){
+      const [x0,y0] = a.zone, seated = atSeat(id);
+      const rate = seated ? (a.state==='working' ? 2.2 : a.state==='routine' ? 0.35 : 0) : 0;
+      if(Math.random() < dt*rate) parts.push({x:x0+1.9+Math.random()*1.9, y:y0+1.1, z:1.7, vz:0.55+Math.random()*0.4, life:1.6, max:1.6, c:a.color, g:pickR(GLY[id])});
+      if(id==='kiki' && Math.random() < dt*(seated?0.9:0.45)) parts.push({kind:'chat', x:x0+1.8+Math.random()*2, y:y0+1.1, z:1.8, vz:0.45, life:2.2, max:2.2, c:Math.random()<0.5?'#3fdc8a':'#ffffff', unread:!seated});
+    }
+  });
+  fx.ring = atP('mimi',STATION.mimi); fx.rec = atP('bobo',STATION.bobo); fx.paint = atP('lulu',STATION.lulu); fx.ads = atP('nana',STATION.nana); fx.board = atP('wawa',STATION.wawa);
+  if(!RM){
+    if(fx.ring && Math.random()<dt*3){const m = AG.mimi; parts.push({x:m.pos.x+(Math.random()-0.5)*0.8, y:m.pos.y, z:1.6, vz:0.7, life:1.4, max:1.4, c:pickR(['#ff6fc8','#ff9466','#ffffff']), g:pickR(['♥','♥','★'])})}
+    if(fx.paint && Math.random()<dt*5){const [px,py] = P(23.4+Math.random()*1.4,19.4,0.7+Math.random()*1.0); sparks.push({x:px,y:py,vx:(Math.random()-0.5)*40,vy:-20-Math.random()*30,g:120,life:0.7,max:0.7,c:pickR(['#ff6fc8','#ffd166','#3ee6ff','#8aa2ff','#4dffa6']),s:Math.max(2,TW*0.09)})}
+    if(fx.ads && Math.random()<dt*2.5) parts.push({x:15.0, y:2.6+Math.random()*2.6, z:2.0, vz:0.6, life:1.3, max:1.3, c:'#ff6fc8', g:pickR(['$','↑','%'])});
+  }
+  // vacuum robot
+  if(bot.spin>0){bot.spin -= rdt; bot.ang += rdt*14}
+  else if(!bot.tg){if((bot.wait -= dt) <= 0) bot.tg = pickR(BOT_PTS)}
+  else {
+    const dx = bot.tg[0]-bot.pos.x, dy = bot.tg[1]-bot.pos.y, d = Math.hypot(dx,dy), st = 0.85*dt;
+    bot.ang = Math.atan2(dy,dx);
+    if(d<=st){bot.pos.x = bot.tg[0]; bot.pos.y = bot.tg[1]; bot.tg = null; bot.wait = 1+Math.random()*3}
+    else {bot.pos.x += dx/d*st; bot.pos.y += dy/d*st}
+  }
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i]; p.z += p.vz*dt; p.life -= dt; if(p.life<=0) parts.splice(i,1)}
+  for(let i=sparks.length-1;i>=0;i--){const p=sparks[i]; p.vy += p.g*rdt; p.x += p.vx*rdt; p.y += p.vy*rdt; p.life -= rdt; if(p.life<=0) sparks.splice(i,1)}
+  for(let i=confetti.length-1;i>=0;i--){const p=confetti[i]; p.vy += 380*rdt; p.vx *= Math.pow(0.35,rdt); p.x += p.vx*rdt; p.y += p.vy*rdt; p.rot += p.vr*rdt; p.life -= rdt; if(p.life<=0 || p.y>H+30) confetti.splice(i,1)}
+  for(let i=beams.length-1;i>=0;i--) if(simT-beams[i].t0 > beams[i].dur) beams.splice(i,1);
+  CLOUDS.forEach(c => {c.u += c.v*dt; if(c.u > (c.side==='R'?GX:GY)+2) c.u = -2});
+  if(todMode==='auto') cyc = (cyc + dt/150) % 1;
+  const tw = targetW(), kk = todMode==='auto' ? 1 : Math.min(1, rdt*1.5);
+  WT.d += (tw.d-WT.d)*kk; WT.k += (tw.k-WT.k)*kk; WT.n += (tw.n-WT.n)*kk;
+  hq += (hqTarget-hq)*Math.min(1,rdt*3);
+  const tx = mouse ? (0.5-mouse.x/W)*W*0.012 : 0, ty = mouse ? (0.5-mouse.y/H)*H*0.012 : 0;
+  cam.x += (tx-cam.x)*Math.min(1,rdt*2.5); cam.y += (ty-cam.y)*Math.min(1,rdt*2.5);
+}
+
+/* ---------- furniture ---------- */
+let T = 0;
+function plant(x,y,sc){
+  return {k:x+y, f:() => {
+    box(ctx,x-0.24*sc,y-0.24*sc,x+0.24*sc,y+0.24*sc,0,0.42*sc,'#efeaf7',{top:'#5a4636',left:'#ddd6ea',right:'#c4bcd6'});
+    const sw = RM ? 0 : Math.sin(T*1.3+x)*TW*0.02;
+    [[-0.12,-0.1,0.9,'#1d7a55'],[0.14,-0.12,1.05,'#1f8a5e'],[0,0.05,1.35,'#27a874'],[-0.15,0.12,0.75,'#2fbf83'],[0.12,0.14,0.85,'#3ad08b'],[0,0,1.0,'#46e09a']].forEach(([dx,dy,dz,col]) => {
+      const [px,py] = P(x+dx*sc,y+dy*sc,(0.42+dz*0.55)*sc); ell(px+sw*dz,py,TW*0.24*sc,TW*0.2*sc,col);
+    });
+  }};
+}
+function glassPanel(a,b,c,d){
+  poly(ctx,[a,b,c,d],'rgba(170,190,255,.09)');
+  poly(ctx,[lerp2(a,b,0.15),lerp2(a,b,0.32),lerp2(d,c,0.55),lerp2(d,c,0.38)],'rgba(255,255,255,.08)');
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(200,210,255,.55)'; line(ctx,d,c); line(ctx,a,b);
+  ctx.strokeStyle = 'rgba(200,210,255,.25)'; line(ctx,a,d); line(ctx,b,c);
+}
+function steam(x,y,z){
+  if(RM) return;
+  ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = Math.max(1,TW*0.03);
+  for(let k=0;k<2;k++){
+    const [px,py] = P(x,y,z), ph = T*2+k*2.1, hh = TW*0.5;
+    ctx.beginPath(); ctx.moveTo(px+k*TW*0.06,py);
+    ctx.bezierCurveTo(px+Math.sin(ph)*TW*0.12,py-hh*0.35,px-Math.sin(ph)*TW*0.12,py-hh*0.7,px+Math.sin(ph+1)*TW*0.08,py-hh); ctx.stroke();
+  }
+}
+function legs(x,y,z,col){ctx.strokeStyle = col||'#5a5870'; ctx.lineWidth = Math.max(1.2,TW*0.05); line(ctx,P(x,y,0),P(x,y,z))}
+const FURN = [];
+function buildFurniture(){
+  FURN.length = 0;
+  /* Wilson's office */
+  FURN.push({k:3.2, f:() => {
+    box(ctx,0.1,1.2,0.65,4.4,0,2.3,'#5a3c34',{top:'#6c4a40',right:'#46302a'});
+    const cols = ['#b48cff','#ff6fc8','#3ee6ff','#ffd166','#e9e2d0','#7a6cff','#ff9a8b','#3fdc8a'];
+    let s = 3;
+    [0.15,0.75,1.35].forEach(z0 => {
+      ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = Math.max(1,TW*0.04); line(ctx,P(0.65,1.2,z0+0.55),P(0.65,4.4,z0+0.55));
+      for(let y=1.3;y<4.25;){const w = 0.1+((s*37)%7)*0.025, hh = 0.32+((s*13)%5)*0.04; poly(ctx,[P(0.65,y,z0),P(0.65,y+w,z0),P(0.65,y+w,z0+hh),P(0.65,y,z0+hh)],cols[s%cols.length]); y += w+0.02; s++}
+    });
+    ctx.save(); ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 12; box(ctx,0.28,2.2,0.48,2.4,2.3,0.35,'#ffd166',{top:'#ffe7a3'}); ctx.restore();
+  }});
+  FURN.push({k:5.5, f:() => {box(ctx,2.85,2.15,3.75,2.4,0,1.6,'#24213a',{top:'#34304f'}); box(ctx,2.85,2.4,3.75,3.15,0.05,0.35,'#2d2a46')}});
+  FURN.push({k:7.35, f:() => {
+    box(ctx,1.8,3.6,4.8,4.5,0,0.62,'#7a5540',{top:'#a37656',left:'#6a4935',right:'#4d3624',edge:'rgba(255,220,180,.14)'});
+    ctx.save(); ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 6; ctx.strokeStyle = 'rgba(255,209,102,.8)'; ctx.lineWidth = 1.2; line(ctx,P(1.8,4.5,0.6),P(4.8,4.5,0.6)); ctx.restore();
+    poly(ctx,[P(2.75,4.5,0.2),P(3.85,4.5,0.2),P(3.85,4.5,0.42),P(2.75,4.5,0.42)],'#d9b45a');
+    planeY(4.5,2.75,3.85,0.2,0.42,(w,h)=>{ctx.font = `700 ${Math.max(5,h*0.6)}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#3a2410'; ctx.fillText('WILSON · CEO',w/2,h/2+0.5)});
+    box(ctx,2.9,3.78,3.7,4.18,0.62,0.04,'#c9cbe0');
+    box(ctx,2.9,3.7,3.7,3.78,0.66,0.48,'#2a2a3a',{left:'#33334a'});
+    ell(...P(3.3,3.78,0.92),TW*0.04,TW*0.04,'#ffffff');
+    box(ctx,2.1,3.85,2.3,4.05,0.62,0.18,'#ffffff',{top:'#5a3420'});
+    box(ctx,4.35,3.8,4.45,3.9,0.62,0.55,'#c9a14a');
+    ell(...P(4.4,3.85,1.2),TW*0.2,TW*0.1,'#ffdca0');
+    steam(2.2,3.95,0.85);
+  }});
+  // aquarium
+  FURN.push({k:6.4, f:() => {
+    box(ctx,4.9,0.35,6.6,0.95,0,0.6,'#4a342c',{top:'#5c4238'});
+    box(ctx,4.95,0.4,6.55,0.9,0.6,0.75,'#5fb8ff',{top:'rgba(170,225,255,.5)',left:'rgba(70,160,240,.55)',right:'rgba(50,130,220,.55)',edge:'rgba(220,240,255,.6)'});
+    planeY(0.9,4.95,6.55,0.6,1.35,(w,h)=>{
+      ctx.fillStyle = 'rgba(30,120,90,.6)'; ctx.fillRect(0,h*0.85,w,h*0.15);
+      [[0.15,0.55],[0.82,0.7]].forEach(([u,hh])=>{ctx.strokeStyle='#2fbf83'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(w*u,h*0.88); ctx.quadraticCurveTo(w*u+Math.sin(T*1.5+u*9)*4,h*(0.88-hh/2),w*u+Math.sin(T*1.5+u*9+1)*3,h*(0.88-hh)); ctx.stroke()});
+      ['#ff9466','#ffd166','#ff6fc8'].forEach((col,k)=>{
+        const ph = T*(0.5+k*0.17)+k*2, u = (Math.sin(ph)+1)/2, dirR = Math.cos(ph) > 0, x = w*(0.12+u*0.76), y = h*(0.3+k*0.18)+Math.sin(T*2+k)*2, s = Math.max(2,w*0.05);
+        ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x,y,s,s*0.6,0,0,Math.PI*2); ctx.fill();
+        const tx = dirR ? x-s : x+s; ctx.beginPath(); ctx.moveTo(tx,y); ctx.lineTo(tx+(dirR?-s*0.8:s*0.8),y-s*0.6); ctx.lineTo(tx+(dirR?-s*0.8:s*0.8),y+s*0.6); ctx.closePath(); ctx.fill();
+      });
+      if(!RM){ctx.fillStyle='rgba(255,255,255,.7)'; for(let k=0;k<4;k++){const v = (T*0.4+k*0.27)%1; ctx.beginPath(); ctx.arc(w*(0.3+k*0.12)+Math.sin(T*3+k)*2, h*(0.85-v*0.8), 1.2, 0, Math.PI*2); ctx.fill()}}
+    });
+  }});
+  FURN.push(plant(6.25,5.9,1.15), plant(7.75,0.8,1.0), plant(13.95,0.75,1.1), plant(20.0,0.75,1.0), plant(25.3,7.6,1.15), plant(25.3,14.3,1.0), plant(25.3,21.4,1.25), plant(0.85,7.4,1.1), plant(0.85,13.8,1.0), plant(8.2,21.4,1.05), plant(17.6,21.4,1.0), plant(19.6,8.0,0.9));
+  // glass walls of Wilson's office
+  for(let x=0;x<7;x++) FURN.push({k:x+0.5+6.5, f:() => glassPanel(P(x,6.5,0),P(x+1,6.5,0),P(x+1,6.5,GH),P(x,6.5,GH))});
+  [[0,1],[1,2],[2,3],[3,4.2],[5.6,6.5]].forEach(([y0,y1]) => FURN.push({k:7+(y0+y1)/2, f:() => glassPanel(P(7,y0,0),P(7,y1,0),P(7,y1,GH),P(7,y0,GH))}));
+  FURN.push({k:9.2, f:() => {
+    planeX(7,0.4,3.4,1.4,2.2,(w,h)=>{
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.font = `700 ${TW*0.4}px ${FD}`; ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 12; ctx.fillStyle = '#ffd166'; ctx.fillText('WILSON · CEO',w/2,h*0.35);
+      ctx.shadowBlur = 0; ctx.font = `600 ${TW*0.24}px ${FB}`; ctx.fillStyle = 'rgba(255,230,180,.85)'; ctx.fillText('老板办公室',w/2,h*0.8);
+    });
+  }});
+  [[4.12,4.2],[5.6,5.68],[6.45,6.55]].forEach(([y0,y1]) => FURN.push({k:7+y1, f:() => box(ctx,6.95,y0,7.05,y1,0,GH,'#b6bbe0',{top:'#d9dcf5'})}));
+  FURN.push({k:13.45, f:() => box(ctx,0,6.45,0.1,6.55,0,GH,'#b6bbe0')});
+
+  /* Sasa: printer + filing cabinet */
+  FURN.push({k:11.0, f:() => {box(ctx,8.7,1.2,9.35,1.8,0,0.7,'#d9dbe8',{top:'#eef0f8'}); poly(ctx,[P(8.8,1.3,0.71),P(9.25,1.3,0.71),P(9.25,1.7,0.71),P(8.8,1.7,0.71)],'#ffffff'); ell(...P(9.35,1.6,0.5),TW*0.035,TW*0.035,'#4dffa6')}});
+  FURN.push({k:15.2, f:() => {box(ctx,12.6,1.2,13.3,1.9,0,1.05,'#c9c4dc',{top:'#e3dff0'}); [0.25,0.6,0.92].forEach(z=>{ctx.strokeStyle='rgba(40,30,80,.35)'; ctx.lineWidth=1; line(ctx,P(12.7,1.9,z),P(13.2,1.9,z))})}});
+  /* Nana: standing ads dashboard */
+  FURN.push({k:18.7, f:() => {
+    legs(14.85,2.3,0.6); legs(14.85,5.2,0.6);
+    box(ctx,14.78,2.0,14.88,5.5,0.55,1.6,'#1b1934',{edge:'rgba(255,255,255,.1)'});
+    planeX(14.88,2.08,5.42,0.63,2.07,(w,h)=>{
+      const on = fx.ads || AG.nana.state==='working';
+      ctx.fillStyle = '#0f0d28'; ctx.fillRect(0,0,w,h);
+      const fs = Math.max(5,h*0.12); ctx.font = `600 ${fs}px ${FM}`; ctx.textAlign='left'; ctx.textBaseline='top';
+      ctx.fillStyle = '#ff6fc8'; ctx.fillText('META ADS · LIVE',w*0.05,h*0.06);
+      ctx.fillStyle = '#ffffff'; ctx.font = `700 ${fs*1.7}px ${FD}`; ctx.fillText(KPI.nana[0].v.toFixed(1)+'× ROAS',w*0.05,h*0.22);
+      const n = 14, pts = [];
+      for(let k=0;k<n;k++){const v = 0.35+0.45*(k/n)+0.12*Math.sin(T*(on?2:0.6)+k*0.9); pts.push([w*0.05+k*(w*0.9/(n-1)), h*0.92-v*h*0.5])}
+      const gr = ctx.createLinearGradient(0,h*0.4,0,h); gr.addColorStop(0,'rgba(255,111,200,.45)'); gr.addColorStop(1,'rgba(255,111,200,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(pts[0][0],h*0.95); pts.forEach(p=>ctx.lineTo(p[0],p[1])); ctx.lineTo(pts[n-1][0],h*0.95); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#ff6fc8'; ctx.lineWidth = 1.5; ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.stroke();
+      ell(pts[n-1][0],pts[n-1][1],2.5,2.5,'#ffffff');
+    });
+  }});
+  /* Mimi: pink backdrop with neon heart + ring light */
+  FURN.push({k:25.7, f:() => {
+    box(ctx,20.75,3.5,20.85,6.2,0,2.1,'#ffd2e2',{right:'#ffd9e6',top:'#ffe6ef'});
+    planeX(20.85,3.5,6.2,0,2.1,(w,h)=>{
+      const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#ffd0e4'); g.addColorStop(1,'#ffb3cf'); ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      const cx = w/2, cy = h*0.38, s = h*0.16, pul = RM?1:0.85+0.15*Math.sin(T*3);
+      ctx.save(); ctx.shadowColor = '#ff3d8b'; ctx.shadowBlur = 14; ctx.strokeStyle = '#ff3d8b'; ctx.lineWidth = Math.max(2,s*0.18); ctx.globalAlpha = pul;
+      ctx.beginPath(); ctx.moveTo(cx,cy+s*0.9); ctx.bezierCurveTo(cx-s*1.6,cy-s*0.1,cx-s*0.7,cy-s*1.2,cx,cy-s*0.45); ctx.bezierCurveTo(cx+s*0.7,cy-s*1.2,cx+s*1.6,cy-s*0.1,cx,cy+s*0.9); ctx.stroke(); ctx.restore();
+      ctx.font = `700 ${Math.max(6,h*0.1)}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#c2185b'; ctx.fillText('CONTENT · LIVE',cx,h*0.68);
+    });
+  }});
+  FURN.push({k:30.5, f:() => {
+    const [bx,by] = P(24.9,5.6,0), [tx,ty] = P(24.9,5.6,1.75);
+    ctx.strokeStyle = '#3b3756'; ctx.lineWidth = Math.max(1.5,TW*0.05); line(ctx,[bx,by],[tx,ty]);
+    [-1,0,1].forEach(k=>line(ctx,[bx,by],[bx+k*TW*0.22,by+TW*0.06+(k?0:TW*0.06)]));
+    ctx.save(); if(fx.ring){ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 22}
+    ctx.strokeStyle = fx.ring ? '#ffffff' : '#d9d5ea'; ctx.lineWidth = Math.max(3,TW*0.12);
+    ctx.beginPath(); ctx.ellipse(tx,ty-TW*0.05,TW*0.26,TW*0.42,0.35,0,Math.PI*2); ctx.stroke(); ctx.restore();
+    box(ctx,24.85,5.55,24.95,5.65,1.6,0.3,'#222034');
+    if(fx.ring && !RM && Math.random()<0.04){burst(tx,ty,['#ffffff'],6,60)}
+  }});
+  /* Kiki: chat neon panel */
+  FURN.push({k:33.2, f:() => {
+    box(ctx,21.25,10.3,21.35,13.1,0.35,1.55,'#183a2a',{right:'#1c4a34'});
+    planeX(21.35,10.4,13.0,0.42,1.83,(w,h)=>{
+      ctx.fillStyle = '#0c2219'; ctx.fillRect(0,0,w,h);
+      ctx.save(); ctx.shadowColor = '#3fdc8a'; ctx.shadowBlur = 10; ctx.fillStyle = '#3fdc8a';
+      const s = h*0.22; rr(w*0.08,h*0.18,s*1.6,s*1.15,s*0.4); ctx.fill(); ctx.beginPath(); ctx.moveTo(w*0.08+s*0.3,h*0.18+s*1.1); ctx.lineTo(w*0.08+s*0.15,h*0.18+s*1.55); ctx.lineTo(w*0.08+s*0.75,h*0.18+s*1.1); ctx.fill(); ctx.restore();
+      ctx.fillStyle = '#0c2219'; [0.35,0.8,1.25].forEach(k=>{ctx.beginPath(); ctx.arc(w*0.08+s*k, h*0.18+s*0.58, s*0.12, 0, Math.PI*2); ctx.fill()});
+      ctx.font = `700 ${Math.max(6,h*0.16)}px ${FD}`; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillStyle='#bfffe0';
+      ctx.fillText('WhatsApp 客服',w*0.08+s*1.9,h*0.32); ctx.font = `500 ${Math.max(5,h*0.12)}px ${FM}`; ctx.fillStyle='#3fdc8a'; ctx.fillText('24/7 · '+KPI.kiki[0].v+' 对话',w*0.08+s*1.9,h*0.56);
+    });
+  }});
+  /* Lulu: swatch wall + easel */
+  FURN.push({k:39.7, f:() => {
+    box(ctx,21.25,16.6,21.35,19.6,0.3,1.5,'#e9e5f3',{right:'#f4f2fb'});
+    planeX(21.35,16.7,19.5,0.38,1.72,(w,h)=>{
+      const cols = ['#ff6fc8','#ff9466','#ffd166','#3fdc8a','#3ee6ff','#8aa2ff','#b48cff','#2a2340','#ffffff','#e0486e','#f3b8c8','#9be8d0'];
+      const cw = w/6, ch = h/2;
+      cols.forEach((c,i)=>{ctx.fillStyle = c; ctx.fillRect((i%6)*cw+2, Math.floor(i/6)*ch+2, cw-4, ch*0.7)});
+    });
+  }});
+  FURN.push({k:43.3, f:() => {
+    legs(23.5,19.5,1.9,'#8a6246'); legs(24.7,19.5,1.9,'#8a6246'); legs(24.1,19.1,1.95,'#8a6246');
+    box(ctx,23.35,19.35,24.85,19.45,0.55,0.06,'#8a6246');
+    planeY(19.45,23.4,24.8,0.62,1.85,(w,h)=>{
+      ctx.fillStyle = '#fffdf6'; ctx.fillRect(0,0,w,h);
+      const k = fx.paint ? T*0.8 : 1.2;
+      [['#ff6fc8',0.3,0.35,0.22],['#ffd166',0.68,0.3,0.18],['#3ee6ff',0.5,0.66,0.25],['#8aa2ff',0.24,0.72,0.14],['#4dffa6',0.78,0.7,0.12]].forEach(([c,u,v,r],i)=>{
+        ctx.fillStyle = rgba(c,.85); ctx.beginPath(); ctx.arc(w*(u+0.05*Math.sin(k+i)), h*(v+0.04*Math.cos(k*1.3+i)), Math.min(w,h)*r*(0.85+0.15*Math.sin(k*1.7+i)), 0, Math.PI*2); ctx.fill();
+      });
+      ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1; ctx.strokeRect(0,0,w,h);
+    });
+  }});
+  /* Bobo: studio backdrop, softboxes, camera */
+  FURN.push({k:20.4, f:() => {
+    poly(ctx,[P(1.25,17.6),P(2.7,17.6),P(2.7,20.8),P(1.25,20.8)],'#9fc3c7');
+    box(ctx,1.15,17.6,1.25,20.8,0,2.2,'#9fc3c7',{right:'#a9cfd2',top:'#bfe0e2'});
+    planeX(1.25,17.6,20.8,0,2.2,(w,h)=>{const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#8fb6bb'); g.addColorStop(1,'#c4e3e4'); ctx.fillStyle = g; ctx.fillRect(0,0,w,h)});
+  }});
+  const softbox = (x,y,k) => FURN.push({k, f:() => {
+    legs(x,y,1.5);
+    const [px,py] = P(x,y,1.75), on = fx.rec;
+    ctx.save(); if(on){ctx.shadowColor = '#fff6dc'; ctx.shadowBlur = 24}
+    poly(ctx,[[px-TW*0.32,py-TW*0.3],[px+TW*0.22,py-TW*0.42],[px+TW*0.22,py+TW*0.12],[px-TW*0.32,py+TW*0.24]], on?'#fffaf0':'#e6e2ee','#3b3756',1.2);
+    ctx.restore();
+  }});
+  softbox(2.8,21.2,24.0); softbox(6.0,17.4,23.4);
+  FURN.push({k:24.55, f:() => {
+    const x = 5.25, y = 19.3, [bx,by] = P(x,y,0), [tx,ty] = P(x,y,1.15);
+    ctx.strokeStyle = '#2b2840'; ctx.lineWidth = Math.max(1.2,TW*0.045);
+    [[-0.25,0.1],[0.2,0.25],[0.1,-0.25]].forEach(([dx,dy])=>{const f = P(x+dx,y+dy,0); line(ctx,f,[tx,ty])});
+    box(ctx,x-0.22,y-0.15,x+0.22,y+0.15,1.15,0.32,'#2b2840',{top:'#3b3756'});
+    const [lx,ly] = P(x-0.3,y,1.31); ell(lx,ly,TW*0.11,TW*0.13,'#15132a'); ell(lx,ly,TW*0.06,TW*0.07,'#4d6bff');
+    const on = fx.rec && Math.floor(T*2)%2===0; ctx.save(); if(on){ctx.shadowColor = '#ff3355'; ctx.shadowBlur = 10} ell(...P(x+0.1,y-0.1,1.52),TW*0.045,TW*0.045,fx.rec?(on?'#ff3355':'#7a2030'):'#444'); ctx.restore();
+  }});
+  /* Wawa: kanban board + parcel shelf */
+  FURN.push({k:13.0, f:() => {
+    legs(1.4,10.3,0.4); legs(1.4,12.7,0.4);
+    box(ctx,1.3,10.1,1.4,12.9,0.35,1.55,'#f2f0f8',{right:'#fbfaff'});
+    planeX(1.4,10.15,12.85,0.4,1.85,(w,h)=>{
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h);
+      const cw = w/3, heads = ['#ffc94d','#3ee6ff','#4dffa6'];
+      heads.forEach((c,i)=>{ctx.fillStyle = c; ctx.fillRect(i*cw+3, 3, cw-6, h*0.1); ctx.strokeStyle='rgba(0,0,0,.08)'; ctx.beginPath(); ctx.moveTo((i+1)*cw,2); ctx.lineTo((i+1)*cw,h-2); ctx.stroke()});
+      const cards = [[0,0],[0,1],[0,2],[1,0],[1,1],[2,0],[2,1],[2,2]];
+      cards.forEach(([col,row],i)=>{ctx.fillStyle = ['#ffe9a8','#c9f6ff','#c8ffe3'][col]; ctx.fillRect(col*cw+5, h*0.18+row*h*0.25, cw-10, h*0.2)});
+      const sp = (fx.board || AG.wawa.state==='working') ? 0.6 : 0.15, u = (T*sp)%3, col = Math.floor(u), f = u-col;
+      const x = col*cw + Math.min(1,f*1.6)*cw + 5;
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 4; ctx.fillStyle = '#ffb3cf'; ctx.fillRect(Math.min(x,2*cw+5), h*0.78, cw-10, h*0.17); ctx.restore();
+    });
+  }});
+  FURN.push({k:17.2, f:() => {
+    box(ctx,5.7,10.0,6.3,12.4,0,1.3,'#d6d1e4',{top:'#e7e3f1'});
+    box(ctx,5.75,10.1,6.25,10.7,1.3,0.35,'#c9935f'); box(ctx,5.75,10.9,6.25,11.5,1.3,0.28,'#b98454'); box(ctx,5.8,11.6,6.2,12.2,1.3,0.42,'#d6a26c');
+    [0.35,0.8].forEach(z=>{box(ctx,5.75,10.2,6.25,10.9,z,0.3,'#c9935f'); box(ctx,5.75,11.3,6.25,12.2,z,0.32,'#b98454')});
+  }});
+  /* HQ */
+  FURN.push({k:C.x+C.y-0.1, f:drawTable});
+  /* lounge */
+  FURN.push({k:28.0, f:() => {
+    box(ctx,9.8,17.75,12.2,18.05,0,0.95,'#5b4fa0',{top:'#7468bd'});
+    box(ctx,9.6,17.75,9.8,18.9,0,0.62,'#5b4fa0',{top:'#7468bd'});
+    box(ctx,9.8,18.05,12.2,18.9,0,0.42,'#6658ad',{top:'#7a6cc4'});
+    box(ctx,10.1,18.0,10.7,18.25,0.42,0.38,'#ff6fc8',{top:'#ff9fdc'}); box(ctx,11.3,18.0,11.9,18.25,0.42,0.38,'#3ee6ff',{top:'#9ff0ff'});
+    box(ctx,12.2,17.75,12.4,18.9,0,0.62,'#5b4fa0',{top:'#7468bd'});
+  }});
+  FURN.push({k:30.4, f:() => {box(ctx,10.3,19.6,11.7,20.2,0,0.32,'#7a5840',{top:'#9a7454'}); poly(ctx,[P(10.5,19.7,0.33),P(11.0,19.7,0.33),P(11.0,20.05,0.33),P(10.5,20.05,0.33)],'#f4efe2'); box(ctx,11.3,19.75,11.45,19.9,0.32,0.14,'#ffffff',{top:'#5a3420'}); steam(11.37,19.82,0.5)}});
+  FURN.push({k:33.1, f:drawFoos});
+  FURN.push({k:34.1, f:() => {
+    box(ctx,15.6,17.5,16.4,19.7,0,0.95,'#3a3560',{top:'#9a7050'});
+    box(ctx,15.7,17.7,16.25,18.3,0.95,0.62,'#d9dbe8',{top:'#eef0f8'});
+    ctx.save(); ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 8; ell(...P(16.25,17.95,1.35),TW*0.04,TW*0.04,'#ff4d6d'); ctx.restore();
+    box(ctx,15.8,18.7,15.95,18.85,0.95,0.15,'#ffffff',{top:'#5a3420'}); box(ctx,15.8,19.05,15.95,19.2,0.95,0.15,'#ffffff',{top:'#5a3420'});
+    steam(15.98,18.0,1.6);
+  }});
+  FURN.push({k:30.4, f:() => {
+    ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = Math.max(1,TW*0.04); line(ctx,P(9.4,21.0,0),P(9.4,21.0,1.9));
+    ell(...P(9.4,21.0,0),TW*0.16,TW*0.08,'#2a2440');
+    const [lx,ly] = P(9.4,21.0,2.0);
+    ctx.fillStyle = '#ffe2b0'; ctx.beginPath(); ctx.moveTo(lx-TW*0.18,ly+TW*0.1); ctx.lineTo(lx+TW*0.18,ly+TW*0.1); ctx.lineTo(lx+TW*0.1,ly-TW*0.12); ctx.lineTo(lx-TW*0.1,ly-TW*0.12); ctx.closePath(); ctx.fill();
+  }});
+  FURN.push({k:-1, f:()=>{}});
+}
+
+/* ---------- dynamic drawing ---------- */
+function clipWindows(){
+  ctx.beginPath();
+  [[P(0,0,0.3),P(GX,0,0.3),P(GX,0,3.35),P(0,0,3.35)],[P(0,0,0.3),P(0,GY,0.3),P(0,GY,3.35),P(0,0,3.35)]].forEach(q=>{ctx.moveTo(q[0][0],q[0][1]); q.slice(1).forEach(p=>ctx.lineTo(p[0],p[1])); ctx.closePath()});
+  ctx.clip();
+}
+function drawSky(t){
+  ctx.save(); clipWindows();
+  const sunA = WT.d + WT.k*0.8;
+  if(sunA>0.02){
+    const f = todMode==='auto' ? clamp(cyc/0.5,0,1) : todMode==='dusk' ? 0.92 : 0.45;
+    const [sx,sy] = P(3+f*20,0,2.65+Math.sin(f*Math.PI)*0.55), dusk = WT.k/(WT.d+WT.k+0.001);
+    ctx.save(); ctx.globalAlpha = sunA; ctx.shadowColor = dusk>0.5?'#ffb27a':'#fff6d8'; ctx.shadowBlur = 40;
+    ell(sx,sy,TW*0.45,TW*0.45,dusk>0.5?'#ffc58f':'#fffbe8'); ctx.restore();
+  }
+  const moonA = WT.n + WT.k*0.3;
+  if(moonA>0.02){
+    const [mx,my] = P(0,15.5,2.85); ctx.save(); ctx.globalAlpha = moonA; ctx.shadowColor = '#ffe9c4'; ctx.shadowBlur = 30;
+    ell(mx,my,TW*0.42,TW*0.42,'#fff2d6'); ctx.restore();
+    ctx.save(); ctx.globalAlpha = moonA*0.6; ell(mx-TW*0.1,my-TW*0.08,TW*0.09,TW*0.09,'rgba(200,180,150,.5)'); ell(mx+TW*0.14,my+TW*0.1,TW*0.06,TW*0.06,'rgba(200,180,150,.4)'); ctx.restore();
+  }
+  const cc = [255*WT.d+255*WT.k+110*WT.n, 255*WT.d+190*WT.k+100*WT.n, 255*WT.d+205*WT.k+170*WT.n].map(Math.round), ca = 0.85*WT.d+0.55*WT.k+0.22*WT.n;
+  CLOUDS.forEach(c => {
+    const [px,py] = c.side==='R' ? P(c.u,0,c.z) : P(0,c.u,c.z), s = TW*c.s;
+    ctx.fillStyle = `rgba(${cc[0]},${cc[1]},${cc[2]},${ca})`;
+    [[0,0,0.55,0.28],[-0.45,0.08,0.4,0.22],[0.45,0.06,0.42,0.24],[0.1,-0.16,0.38,0.24]].forEach(([dx,dy,rx,ry])=>{ctx.beginPath(); ctx.ellipse(px+dx*s,py+dy*s,rx*s,ry*s,0,0,Math.PI*2); ctx.fill()});
+  });
+  if(!RM && WT.d>0.3){
+    ctx.strokeStyle = `rgba(40,50,80,${0.6*WT.d})`; ctx.lineWidth = 1.2;
+    for(let k=0;k<3;k++){const u = (simT*0.7+k*1.1)%32-3, [bx,by] = P(u,0,2.9+k*0.08), fl = Math.sin(T*9+k)*TW*0.06; ctx.beginPath(); ctx.moveTo(bx-TW*0.12,by-fl); ctx.lineTo(bx,by); ctx.lineTo(bx+TW*0.12,by-fl); ctx.stroke()}
+  }
+  if(!RM){
+    const u = (simT*0.55)%34 - 4;
+    if(u>0 && u<GY){const [px,py] = P(0,u,3.12); ctx.fillStyle = Math.sin(T*8)>0 ? '#ff5a6e' : 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(px,py,1.6,0,Math.PI*2); ctx.fill()}
+  }
+  ctx.restore();
+}
+function drawSigns(t,N){
+  const sign = (txt,anchor,skew,col,fl,size) => {
+    ctx.save(); ctx.globalAlpha = fl; ctx.translate(anchor[0],anchor[1]); ctx.transform(1,skew,0,1,0,0);
+    ctx.font = `700 ${size}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = col; ctx.shadowBlur = 6+14*N; ctx.fillStyle = col; ctx.fillText(txt,0,0); ctx.shadowBlur = 0; ctx.fillStyle = `rgba(255,255,255,${0.2+0.45*N})`; ctx.fillText(txt,0,0);
+    ctx.restore();
+  };
+  const f1 = RM ? 1 : ((t%6.3)<0.25 && Math.sin(t*70)>0 ? 0.3 : 1), f2 = RM ? 1 : ((t%9.1)<0.15 && Math.sin(t*55)>0 ? 0.3 : 1);
+  sign('WILSON & CO.', P(18.5,0,3.2), 0.5, '#ff4fb8', f1*(0.55+0.45*N), TW*0.62);
+  sign('AI OFFICE · 24/7', P(0,11.5,3.2), -0.5, '#20c8ee', f2*(0.55+0.45*N), TW*0.55);
+}
+function drawZoneLabels(){
+  const fs = Math.max(11, Math.min(14, TW*0.34)), fe = Math.max(8, fs*0.68);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  TEAM.forEach(id => {
+    const a = AG[id], [x0,y0,x1] = a.zone, [px,py] = P(x1-1.15, y0+0.35, 2.35), c = a.color;
+    ctx.font = `700 ${fs}px ${FB}`; const w1 = ctx.measureText(a.zh).width;
+    ctx.font = `600 ${fe}px ${FM}`; const w2 = ctx.measureText(a.en).width;
+    const tw = Math.max(w1,w2) + fs*1.4, th = fs + fe + 12;
+    ctx.strokeStyle = 'rgba(200,200,230,.45)'; ctx.lineWidth = 1;
+    line(ctx,[px-tw*0.3,py-th/2],[px-tw*0.3,py-th/2-TH*0.8]); line(ctx,[px+tw*0.3,py-th/2],[px+tw*0.3,py-th/2-TH*0.8]);
+    ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = 10; rr(px-tw/2,py-th/2,tw,th,8); ctx.fillStyle = 'rgba(10,8,30,.92)'; ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
+    ctx.font = `700 ${fs}px ${FB}`; ctx.fillStyle = '#ffffff'; ctx.fillText(a.zh, px, py-fe*0.55);
+    ctx.font = `600 ${fe}px ${FM}`; ctx.fillStyle = c; ctx.fillText(a.en, px, py+fs*0.55);
+  });
+}
+function drawTV(t){
+  const [ax,ay] = P(0.95,0.06,2.85), w = 3.6*TW/2, h = 1.6*TH;
+  ctx.save(); ctx.translate(ax,ay); ctx.transform(1,0.5,0,1,0,0);
+  ctx.shadowColor = '#3ee6ff'; ctx.shadowBlur = 16; ctx.fillStyle = '#0a0920'; ctx.fillRect(0,0,w,h); ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#34315f'; ctx.lineWidth = 2; ctx.strokeRect(0,0,w,h);
+  const fs = Math.max(5, TW*0.15);
+  ctx.font = `600 ${fs}px ${FM}`; ctx.fillStyle = '#ffd166'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('WILSON & CO. · LIVE',5,4);
+  const bw = w*0.058;
+  TEAM.forEach((id,i) => {
+    const a = AG[id], act = a.act.slice(-6).reduce((s,v)=>s+v,0);
+    const v = Math.min(1, 0.18 + act*0.12 + (a.state==='working'?0.25:0) + Math.sin(t*2+i)*0.04);
+    const bh = (h-fs*2.8)*v, x = 6+i*bw*1.55;
+    ctx.fillStyle = a.color; ctx.fillRect(x, h-fs*1.4-bh, bw, bh);
+    ctx.fillStyle = '#9d99c9'; ctx.font = `500 ${fs*0.8}px ${FM}`; ctx.fillText(a.name[0], x+bw*0.1, h-fs*1.25);
+  });
+  const pr = total ? prog/total : 0, rcx = w*0.82, rcy = h*0.56, r = h*0.25;
+  ctx.lineWidth = Math.max(2,TW*0.06); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.arc(rcx,rcy,r,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = '#4dffa6'; ctx.beginPath(); ctx.arc(rcx,rcy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*pr); ctx.stroke();
+  ctx.fillStyle = '#eceaff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `600 ${fs}px ${FM}`; ctx.fillText(Math.round(pr*100)+'%',rcx,rcy);
+  ctx.restore();
+}
+function drawHQFloor(t){
+  const [cx,cy] = P(C.x,C.y,0);
+  ctx.save(); ctx.shadowColor = '#3ee6ff'; ctx.shadowBlur = 12;
+  ctx.setLineDash([TW*0.5,TW*0.25]); ctx.lineDashOffset = RM?0:-t*18;
+  ctx.strokeStyle = rgba('#20b8e0', 0.35+hq*0.5); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(cx,cy,2.9*0.7071*TW,2.9*0.7071*TH,0,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]); ctx.strokeStyle = rgba('#9a70ff',.35); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(cx,cy,2.45*0.7071*TW,2.45*0.7071*TH,0,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+function drawTable(){
+  const t = T, r = 1.25, cz = 0.55, [cx,cy] = P(C.x,C.y,0), [tx,ty] = P(C.x,C.y,cz), rx = r*0.7071*TW, ry = r*0.7071*TH;
+  ctx.fillStyle = '#1f1b4c'; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI); ctx.lineTo(tx-rx,ty); ctx.ellipse(tx,ty,rx,ry,0,Math.PI,0,true); ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.shadowColor = '#b48cff'; ctx.shadowBlur = 14;
+  ctx.fillStyle = '#2d2675'; ctx.strokeStyle = rgba('#b48cff',.95); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(tx,ty,rx,ry,0,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.translate(tx,ty); ctx.transform(1,0.5,-1,0.5,0,0);
+  ctx.font = `700 ${TW*0.5}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle = rgba('#3ee6ff',.85); ctx.fillText('HQ',0,0); ctx.restore();
+  const hh = 2.4*TH, bw = rx*0.55, al = hq;
+  const gr = ctx.createLinearGradient(0,ty-hh,0,ty); gr.addColorStop(0,'rgba(62,230,255,0)'); gr.addColorStop(1,rgba('#3ee6ff',0.35*al));
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(tx-bw*0.4,ty); ctx.lineTo(tx-bw,ty-hh); ctx.lineTo(tx+bw,ty-hh); ctx.lineTo(tx+bw*0.4,ty); ctx.closePath(); ctx.fill();
+  const s = TW*0.5, oy = ty-hh*0.72, th = RM?0.6:t*1.4, eq = [0,1,2,3].map(k=>[tx+Math.cos(th+k*Math.PI/2)*s, oy+Math.sin(th+k*Math.PI/2)*s*0.35]);
+  ctx.save(); ctx.strokeStyle = rgba('#3ee6ff', 0.4+0.6*al); ctx.lineWidth = 1.2; ctx.shadowColor = '#3ee6ff'; ctx.shadowBlur = 10;
+  eq.forEach((p,k)=>{const q=eq[(k+1)%4]; line(ctx,p,q); line(ctx,p,[tx,oy-s*1.1]); line(ctx,p,[tx,oy+s*1.1])});
+  ctx.restore();
+}
+function drawFoos(){
+  const x0=12.8,x1=14.6,y0=19.0,y1=19.9;
+  [[x0+0.1,y0+0.1],[x1-0.1,y0+0.1],[x0+0.1,y1-0.1],[x1-0.1,y1-0.1]].forEach(([x,y])=>legs(x,y,0.55,'#4a3426'));
+  box(ctx,x0,y0,x1,y1,0.55,0.25,'#6b4a36',{top:'#2fae6b'});
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; line(ctx,P((x0+x1)/2,y0+0.05,0.8),P((x0+x1)/2,y1-0.05,0.8));
+  [0.3,0.7,1.1,1.5].forEach((dx,i) => {
+    const x = x0+dx, off = foos.on ? Math.sin(T*7+i*1.3)*0.15 : 0;
+    ctx.strokeStyle = '#c9cbe0'; ctx.lineWidth = Math.max(1,TW*0.035); line(ctx,P(x,y0-0.2,0.95),P(x,y1+0.2,0.95));
+    [0.3,0.6].forEach(dy => box(ctx,x-0.05,y0+dy+off-0.05,x+0.05,y0+dy+off+0.05,0.8,0.18,i%2?'#3ee6ff':'#ff6fc8'));
+  });
+  if(foos.on){const bx = (x0+x1)/2 + Math.sin(T*4.3)*0.75, by = (y0+y1)/2 + Math.sin(T*3.1)*0.3; ell(...P(bx,by,0.83),TW*0.05,TW*0.035,'#ffffff')}
+}
+function drawPendant(N){
+  const [cx,cy] = P(C.x,C.y,3.3), rx = 1.0*0.7071*TW, ry = 1.0*0.7071*TH;
+  const [fx0,fy] = P(C.x,C.y,0.6);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const gr = ctx.createLinearGradient(0,cy,0,fy); gr.addColorStop(0,`rgba(255,217,160,${0.04+0.14*N})`); gr.addColorStop(1,'rgba(255,217,160,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(cx-rx,cy); ctx.lineTo(cx+rx,cy); ctx.lineTo(cx+rx*1.9,fy); ctx.lineTo(cx-rx*1.9,fy); ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.strokeStyle = 'rgba(160,160,200,.45)'; ctx.lineWidth = 1;
+  line(ctx,[cx-rx*0.7,cy],[cx-rx*0.7,cy-TH*1.4]); line(ctx,[cx+rx*0.7,cy],[cx+rx*0.7,cy-TH*1.4]);
+  ctx.save(); ctx.shadowColor = '#ffd9a0'; ctx.shadowBlur = 6+14*N; ctx.strokeStyle = N>0.3?'#ffe2b8':'#d8c8b0'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.stroke(); ctx.restore();
+}
+function stool(id){
+  const a = AG[id], s = a.seat;
+  const [bx,by] = P(s.x,s.y,0), [tx,ty] = P(s.x,s.y,0.28);
+  ell(bx,by,TW*0.22,TW*0.11,'rgba(0,0,0,.18)');
+  ctx.strokeStyle = '#6a6784'; ctx.lineWidth = Math.max(1.5,TW*0.06); line(ctx,[bx,by],[tx,ty]);
+  ell(tx,ty+TW*0.02,TW*0.27,TW*0.135,'#3b3756'); ell(tx,ty,TW*0.25,TW*0.115,shade(a.color,-0.2));
+}
+function screenUI(id,w,h,t,on,active){
+  const a = AG[id], c = a.color;
+  ctx.beginPath(); ctx.rect(0,0,w,h); ctx.clip();
+  ctx.fillStyle = on ? '#100e2a' : '#1c1a34'; ctx.fillRect(0,0,w,h);
+  if(!on){ctx.fillStyle = rgba(c,.3); ctx.font = `700 ${h*0.5}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(a.name[0],w/2,h/2+1); return}
+  const sp = active ? 2.4 : 0.8, tt = t*sp + a.phase, p = Math.max(1.5,w*0.05);
+  if(id==='sasa'){
+    const cols = 5, rows = 3, cw = (w-p*2)/cols, ch = (h-p*2)/rows, cur = Math.floor(tt*0.7)%15;
+    for(let r=0;r<rows;r++) for(let k=0;k<cols;k++){const i = r*cols+k; ctx.fillStyle = i===cur ? rgba(c,.6) : 'rgba(255,255,255,.07)'; ctx.fillRect(p+k*cw+1,p+r*ch+1,cw-2,ch-2); if((i*7)%5===1){ctx.fillStyle = rgba(['#ffd166','#3ee6ff',c][i%3],.85); ctx.fillRect(p+k*cw+2,p+r*ch+ch*0.5,cw-4,ch*0.3)}}
+  } else if(id==='nana'){
+    const n = 7, bw = (w-p*2)/n, mh = h-p*3;
+    for(let k=0;k<n;k++){const v = 0.25+0.6*((Math.sin(tt*0.9+k*0.8)+1)/2)*(0.45+k/n*0.6); ctx.fillStyle = rgba(c,k===n-1?.95:.55); ctx.fillRect(p+k*bw+bw*0.15, h-p-v*mh, bw*0.7, v*mh)}
+    ctx.fillStyle = '#fff'; ctx.font = `700 ${Math.max(4,h*0.16)}px ${FM}`; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText('ROAS ↑',p,p*0.6);
+  } else if(id==='mimi'){
+    const cw = (w-p*2)/3, ch = (h-p*2)/2, hot = Math.floor(tt*0.8)%6;
+    for(let i=0;i<6;i++){const g = ctx.createLinearGradient(0,0,cw,ch); g.addColorStop(0,['#ff9466','#ff6fc8','#ffd166','#8aa2ff','#3ee6ff','#b48cff'][i]); g.addColorStop(1,'#2a2340');
+      ctx.save(); ctx.translate(p+(i%3)*cw, p+Math.floor(i/3)*ch); ctx.fillStyle = g; ctx.fillRect(1,1,cw-2,ch-2);
+      if(i===hot){ctx.fillStyle = '#fff'; ctx.font = `700 ${ch*0.55}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('♥',cw/2,ch/2)} ctx.restore()}
+  } else if(id==='kiki'){
+    const lh = h*0.26, off = (tt*0.35%1)*lh, base = Math.floor(tt*0.35);
+    for(let k=-1;k<5;k++){const right = (k+base)%2===0, bw = w*(0.35+((k+base)*37%5)*0.07), y = p + k*lh - off + lh;
+      ctx.fillStyle = right ? '#3fdc8a' : '#e9f6ef'; rr(right ? w-p-bw : p, y, bw, lh*0.72, lh*0.3); ctx.fill()}
+  } else if(id==='bobo'){
+    const g = ctx.createLinearGradient(0,0,w,h*0.6); g.addColorStop(0,'#2a5d7a'); g.addColorStop(1,'#d97b5a'); ctx.fillStyle = g; ctx.fillRect(p,p,w-p*2,h*0.55);
+    ell(p+(w-p*2)*(0.3+0.4*((Math.sin(tt*0.8)+1)/2)), p+h*0.3, h*0.1, h*0.1, '#ffd166');
+    const ty = h*0.68, cl = [['#ffc94d',0.0,0.28],['#ff6fc8',0.3,0.2],['#3ee6ff',0.52,0.3],['#8aa2ff',0.84,0.12]];
+    cl.forEach(([cc,u,l])=>{ctx.fillStyle = cc; ctx.fillRect(p+(w-p*2)*u, ty, (w-p*2)*l-1, h*0.11)});
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(p, ty+h*0.14, (w-p*2)*0.7, h*0.08);
+    const px = p+(w-p*2)*((tt*0.12)%1); ctx.fillStyle = '#ff3355'; ctx.fillRect(px, ty-h*0.04, 1.5, h*0.3);
+  } else if(id==='lulu'){
+    ctx.fillStyle = '#f6f2ea'; ctx.fillRect(p*2.2,p,w-p*3.2,h-p*2);
+    [['#ff6fc8',0.4,0.4,0.2],['#8aa2ff',0.65,0.55,0.25],['#ffd166',0.5,0.75,0.14]].forEach(([cc,u,v,r],i)=>{ctx.fillStyle = rgba(cc,.85); ctx.beginPath(); ctx.arc(w*u+Math.sin(tt*0.7+i)*w*0.04, h*v, h*r, 0, Math.PI*2); ctx.fill()});
+    ['#ff6fc8','#ffd166','#3ee6ff','#8aa2ff'].forEach((cc,i)=>{ctx.fillStyle = cc; ctx.fillRect(p*0.5, p+i*h*0.2, p*1.2, h*0.15)});
+  } else if(id==='wawa'){
+    const cw = (w-p*2)/3;
+    ['#ffc94d','#3ee6ff','#4dffa6'].forEach((cc,i)=>{ctx.fillStyle = cc; ctx.fillRect(p+i*cw+1,p,cw-2,h*0.1); for(let r=0;r<3-i%2;r++){ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(p+i*cw+2, p+h*0.18+r*h*0.22, cw-4, h*0.16)}});
+    const u = (tt*0.25)%2, col = Math.floor(u), f = u-col; ctx.fillStyle = '#ffb3cf'; ctx.fillRect(p+(col+Math.min(1,f*1.5))*cw+2, h*0.8, cw-4, h*0.14);
+  }
+  if(active){ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(0,(tt*20)%h,w,1.5)}
+}
+function drawDesk(id,t){
+  const a = AG[id], [x0,y0] = a.zone, c = a.color;
+  box(ctx,x0+1.1,y0+0.9,x0+4.3,y0+1.7,0,0.5,'#f1eef8',{top:'#fbfaff',left:'#dcd7ea',right:'#bfb9d3',edge:'rgba(60,50,100,.2)'});
+  ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = 6; ctx.strokeStyle = rgba(c,.9); ctx.lineWidth = 1.5; line(ctx,P(x0+1.1,y0+1.7,0.5),P(x0+4.3,y0+1.7,0.5)); ctx.restore();
+  const mx0 = x0+1.7, mx1 = x0+4.0, my0 = y0+1.0, my1 = y0+1.13, mz = 0.64, mh = 0.95;
+  box(ctx,x0+2.75,y0+1.03,x0+2.95,y0+1.2,0.5,0.15,'#77748e');
+  box(ctx,mx0,my0,mx1,my1,mz,mh,'#22203a',{edge:'rgba(255,255,255,.1)'});
+  const on = a.state!=='idle', active = atSeat(id) && ['working','routine','thinking'].includes(a.state) && !(a.say && a.say.until>performance.now());
+  planeY(my1,mx0+0.07,mx1-0.07,mz+0.07,mz+mh-0.07,(w,h)=>screenUI(id,w,h,t,on,active && a.state==='working'));
+  poly(ctx,[P(x0+2.1,y0+1.36,0.51),P(x0+3.4,y0+1.36,0.51),P(x0+3.4,y0+1.6,0.51),P(x0+2.1,y0+1.6,0.51)],'#d9d5e8','rgba(0,0,0,.18)',1);
+  box(ctx,x0+1.3,y0+1.25,x0+1.5,y0+1.45,0.5,0.17,'#ffffff',{top:'#6b3a1e'});
+  box(ctx,x0+3.85,y0+1.3,x0+4.15,y0+1.6,0.5,0.14,'#efeaf7',{top:'#5a4636'}); ell(...P(x0+4.0,y0+1.45,0.85),TW*0.13,TW*0.11,'#2fbf83');
+}
+/* ---------- the pets ---------- */
+function drawEars(a,bw,yt,S,t,moving,ol,lw){
+  const c = a.color, inner = 'rgba(255,170,205,.75)', sw = moving && !RM ? Math.sin(t*11+a.phase)*0.08 : Math.sin(t*1.5+a.phase)*0.03;
+  ctx.lineWidth = lw; ctx.strokeStyle = ol;
+  if(a.ears==='cat'){
+    [-1,1].forEach(sg => {
+      const b1 = [sg*bw*0.44, yt+S*0.3], b2 = [sg*bw*0.06, yt+S*0.04], tip = [sg*bw*0.36+sg*sw*S, yt-S*0.32];
+      poly(ctx,[b1,b2,tip],shade(c,0.15),ol,lw); poly(ctx,[lerp2(b1,b2,0.25),lerp2(b1,b2,0.7),lerp2(lerp2(b1,b2,0.5),tip,0.7)],inner);
+    });
+  } else if(a.ears==='bear' || a.ears==='round'){
+    const r = a.ears==='bear' ? S*0.24 : S*0.19;
+    [-1,1].forEach(sg => {ctx.beginPath(); ctx.arc(sg*bw*0.34, yt+S*0.08, r, 0, Math.PI*2); ctx.fillStyle = shade(c,0.1); ctx.fill(); ctx.stroke(); ell(sg*bw*0.34, yt+S*0.1, r*0.55, r*0.55, inner)});
+  } else if(a.ears==='bunny'){
+    [-1,1].forEach(sg => {
+      ctx.save(); ctx.translate(sg*bw*0.2, yt+S*0.05); ctx.rotate(sg*0.18+sw*sg);
+      ctx.beginPath(); ctx.ellipse(0,-S*0.42,S*0.15,S*0.46,0,0,Math.PI*2); ctx.fillStyle = shade(c,0.15); ctx.fill(); ctx.stroke();
+      ell(0,-S*0.4,S*0.07,S*0.32,inner); ctx.restore();
+    });
+  }
+}
+function drawPet(id,t,refl){
+  const a = AG[id], c = a.color, moving = a.path.length>0, now = performance.now();
+  const saying = !!(a.say && a.say.until>now), greeting = saying && a.say.happy;
+  const happy = a.state==='done' || greeting;
+  const surprised = !!(a.surprise && a.surprise>now);
+  const ph = t*11+a.phase, seated = atSeat(id);
+  let back = false;
+  if(moving) back = a.sdy < -0.2;
+  else if(id!=='wilson' && seated) back = ['working','routine','thinking'].includes(a.state) && !saying && !surprised;
+  else back = a.facePl==='back' && !greeting && !happy;
+  let z = 0, sq = 1, tilt = 0;
+  if(moving){z = Math.abs(Math.sin(ph))*0.22; sq = 1+Math.cos(ph*2)*0.06; tilt = Math.sin(ph)*0.07}
+  else if(a.state==='working' || a.state==='routine'){const k = Math.abs(Math.sin(t*8+a.phase)); z = k*0.03; sq = 1-k*0.03}
+  else if(a.state==='done'){const k = Math.abs(Math.sin(t*5+a.phase)); z = k*0.16; sq = 1+(k-0.5)*0.08}
+  else sq = 1+Math.sin(t*2.2+a.phase)*0.03;
+  if(a.jump>0){const jp = 1-a.jump/0.6; z += Math.sin(jp*Math.PI)*1.0; sq = jp<0.12?0.82:jp>0.88?0.86:1.12}
+  if(RM){z *= 0.3; sq = 1+(sq-1)*0.3; tilt = 0}
+  if(seated) z += id==='wilson' ? 0.4 : 0.28;
+  if(!refl) a.z = z;
+  const [sx,sy] = P(a.pos.x,a.pos.y,0), S = TW*0.5*PS;
+  if(!refl){
+    const shz = 1/(1+z*0.9);
+    ell(sx,sy,S*0.75*shz,S*0.37*shz,'rgba(20,10,40,.32)');
+    const ringCol = a.state==='done' ? '#4dffa6' : a.state==='working' ? c : a.state==='waiting' ? '#ffc04d' : a.state==='reviewing' ? '#ffd166' : null;
+    if(ringCol && !moving){
+      const pul = RM?0.5:(Math.sin(t*4)+1)/2;
+      ctx.save(); ctx.shadowColor = ringCol; ctx.shadowBlur = 12; ctx.strokeStyle = rgba(ringCol,0.5+pul*0.5); ctx.lineWidth = 2;
+      if(a.state==='waiting') ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.ellipse(sx,sy,S*(1.0+pul*0.15),S*(0.5+pul*0.07),0,0,Math.PI*2); ctx.stroke(); ctx.restore();
+    }
+  }
+  ctx.save(); ctx.translate(sx, sy - z*TH); ctx.rotate(tilt);
+  const bw = 1.42*S/Math.sqrt(sq), bh = 1.46*S*sq, yb = -0.16*S, yt = yb-bh;
+  const ol = 'rgba(28,20,56,.55)', lw = Math.max(1,S*0.05);
+  const lift = k => moving ? Math.max(0,Math.sin(ph+k*Math.PI))*S*0.2 : (a.state==='waiting' && k===1 ? Math.max(0,Math.sin(t*10))*S*0.12 : 0);
+  [[-0.3,0],[0.3,1]].forEach(([fx0,k]) => {ctx.beginPath(); ctx.ellipse(fx0*S, -0.07*S-lift(k), S*0.23, S*0.14, 0, 0, Math.PI*2); ctx.fillStyle = shade(c,-0.28); ctx.fill(); ctx.strokeStyle = ol; ctx.lineWidth = lw; ctx.stroke()});
+  drawEars(a,bw,yt,S,t,moving,ol,lw);
+  if(id==='bobo' && back){ctx.beginPath(); ctx.ellipse(0,yt+S*0.18,bw*0.46,S*0.16,0,0,Math.PI*2); ctx.fillStyle = '#e03a4f'; ctx.fill()}
+  const g = ctx.createLinearGradient(0,yt,0,yb); g.addColorStop(0,shade(c,0.4)); g.addColorStop(0.55,c); g.addColorStop(1,shade(c,-0.2));
+  rr(-bw/2,yt,bw,bh,bw*0.44); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = ol; ctx.lineWidth = lw; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.beginPath(); ctx.ellipse(-bw*0.2, yt+bh*0.2, bw*0.13, bh*0.07, -0.6, 0, Math.PI*2); ctx.fill();
+  const thinking = a.state==='thinking' || a.state==='reviewing';
+  const ey = yt+bh*0.48, ex = bw*0.21, lx = (moving ? a.sdx : (a.dir||0))*S*0.08, ly = thinking ? -S*0.07 : 0, er = S*0.1;
+  if(back){
+    ell(0, yb-bh*0.22, S*0.13, S*0.12, shade(c,0.35));
+    ctx.strokeStyle = 'rgba(28,20,56,.18)'; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(0,yt+bh*0.25); ctx.lineTo(0,yb-bh*0.4); ctx.stroke();
+  } else {
+    ell(0, yb-bh*0.25, bw*0.27, bh*0.17, 'rgba(255,255,255,.3)');
+    const blink = !happy && Math.sin(t*0.9+a.phase*3) > 0.985;
+    ctx.lineCap = 'round';
+    [-1,1].forEach(sg => {
+      const x = sg*ex+lx, y = ey+ly;
+      if(happy){ctx.strokeStyle = '#241a3c'; ctx.lineWidth = Math.max(1.5,er*0.55); ctx.beginPath(); ctx.arc(x,y+er*0.6,er*1.0,Math.PI*1.15,Math.PI*1.85); ctx.stroke()}
+      else if(blink){ctx.strokeStyle = '#241a3c'; ctx.lineWidth = Math.max(1.5,er*0.45); line(ctx,[x-er,y],[x+er,y])}
+      else {
+        const k = surprised ? 1.25 : 1;
+        ell(x,y,er*1.0*k,er*1.3*k,'#241a3c');
+        ell(x+er*0.32,y-er*0.45,er*0.38,er*0.38,'#ffffff'); ell(x-er*0.3,y+er*0.42,er*0.17,er*0.17,'rgba(255,255,255,.7)');
+      }
+      ell(sg*bw*0.33, ey+bh*0.13, S*0.12, S*0.07, 'rgba(255,110,160,.5)');
+    });
+    const my = ey+bh*0.16;
+    if(happy){ctx.fillStyle = '#3a1030'; ctx.beginPath(); ctx.arc(lx,my-er*0.2,er*0.75,0,Math.PI); ctx.closePath(); ctx.fill(); ell(lx,my+er*0.25,er*0.35,er*0.2,'#ff7aa8')}
+    else if(surprised) ell(lx,my+er*0.1,er*0.35,er*0.45,'#3a1030');
+    else if(saying && Math.sin(t*16)>0) ell(lx,my+er*0.1,er*0.38,er*0.3,'#3a1030');
+    else {ctx.strokeStyle = '#241a3c'; ctx.lineWidth = Math.max(1,S*0.045); ctx.beginPath(); ctx.arc(lx-er*0.34,my-er*0.2,er*0.34,0.15*Math.PI,0.95*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(lx+er*0.34,my-er*0.2,er*0.34,0.05*Math.PI,0.85*Math.PI); ctx.stroke()}
+    if(a.state==='waiting' && !moving){
+      const k = (t*0.9+a.phase)%1, r = Math.max(2,S*0.08), yy = yt+bh*0.15+k*S*0.4, xx = -bw*0.42;
+      ctx.save(); ctx.globalAlpha *= (1-k); ctx.fillStyle = '#8fdcff'; ctx.beginPath(); ctx.moveTo(xx,yy-r*1.8); ctx.quadraticCurveTo(xx+r*1.2,yy,xx,yy+r); ctx.quadraticCurveTo(xx-r*1.2,yy,xx,yy-r*1.8); ctx.fill(); ctx.restore();
+    }
+  }
+  /* accessories */
+  const sway = (Math.sin(t*5+a.phase)*(moving?0.14:0.05) - (a.dir||0)*0.1)*S;
+  if(id==='wilson'){
+    if(!back){
+      ctx.strokeStyle = '#2a2340'; ctx.lineWidth = Math.max(1.2,S*0.05);
+      [-1,1].forEach(sg => {ctx.beginPath(); ctx.arc(sg*ex+lx,ey+ly,er*1.75,0,Math.PI*2); ctx.stroke()});
+      line(ctx,[-ex+lx+er*1.75,ey+ly],[ex+lx-er*1.75,ey+ly]);
+      const kx = lx*0.5, ky = yb-bh*0.32, tw = S*0.1;
+      poly(ctx,[[kx-tw,ky-tw*0.6],[kx+tw,ky-tw*0.6],[kx,ky+tw*0.5]],'#ffd166');
+      poly(ctx,[[kx-tw*0.6,ky+tw*0.3],[kx+tw*0.6,ky+tw*0.3],[kx+tw*0.3,ky+tw*2.2],[kx,ky+tw*2.7],[kx-tw*0.3,ky+tw*2.2]],'#f0b93f');
+    }
+    const cw = S*0.36, chh = S*0.3, cy = yt+S*0.06;
+    ctx.save(); ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 10;
+    poly(ctx,[[-cw,cy],[-cw,cy-chh],[-cw*0.5,cy-chh*0.45],[0,cy-chh*1.15],[cw*0.5,cy-chh*0.45],[cw,cy-chh],[cw,cy]],'#ffd166','#c99a2e',1);
+    ctx.restore(); ell(0,cy-chh*0.35,S*0.05,S*0.05,'#ff5cc0');
+  } else if(id==='sasa'){
+    const tip = [sway, yt-S*0.62];
+    ctx.strokeStyle = shade(c,-0.4); ctx.lineWidth = Math.max(1.2,S*0.06);
+    ctx.beginPath(); ctx.moveTo(0,yt); ctx.quadraticCurveTo(0,yt-S*0.3,tip[0],tip[1]); ctx.stroke();
+    ctx.save(); ctx.shadowColor = '#ffe066'; ctx.shadowBlur = RM?10:12+Math.sin(t*6)*6; ell(tip[0],tip[1],S*0.13,S*0.13,'#ffe066'); ctx.restore();
+  } else if(id==='nana'){
+    ctx.save(); ctx.translate(bw*0.24, yt+S*0.02); ctx.rotate(Math.sin(t*3+a.phase)*0.12);
+    const w = S*0.24, hh = S*0.15;
+    poly(ctx,[[0,0],[-w,-hh],[-w,hh]],'#ffffff','#e0408f',1); poly(ctx,[[0,0],[w,-hh],[w,hh]],'#ffffff','#e0408f',1);
+    ell(0,0,S*0.07,S*0.07,'#e0408f'); ctx.restore();
+  } else if(id==='mimi'){
+    const hy = yt+S*0.1;
+    [-1,1].forEach(sg => {
+      const hx = sg*bw*0.18, s = S*0.14;
+      ctx.fillStyle = back ? '#2a2340' : '#ff3d8b'; ctx.beginPath(); ctx.moveTo(hx,hy+s*0.9); ctx.bezierCurveTo(hx-s*1.5,hy-s*0.1,hx-s*0.6,hy-s*1.2,hx,hy-s*0.4); ctx.bezierCurveTo(hx+s*0.6,hy-s*1.2,hx+s*1.5,hy-s*0.1,hx,hy+s*0.9); ctx.fill();
+    });
+    ctx.strokeStyle = '#2a2340'; ctx.lineWidth = Math.max(1,S*0.04); line(ctx,[-bw*0.08,hy],[bw*0.08,hy]);
+  } else if(id==='kiki'){
+    ctx.strokeStyle = '#1d3a2c'; ctx.lineWidth = Math.max(2,S*0.09);
+    ctx.beginPath(); ctx.ellipse(0,yt+bh*0.38,bw*0.52,bh*0.42,0,Math.PI*1.05,Math.PI*1.95); ctx.stroke();
+    [-1,1].forEach(sg => {ell(sg*bw*0.5,yt+bh*0.42,S*0.13,S*0.17,'#1d3a2c'); ell(sg*bw*0.5,yt+bh*0.42,S*0.07,S*0.1,c)});
+    if(!back){
+      ctx.strokeStyle = '#1d3a2c'; ctx.lineWidth = Math.max(1,S*0.04); const m0 = [-bw*0.5,yt+bh*0.52], m1 = [-bw*0.16,ey+bh*0.2];
+      ctx.beginPath(); ctx.moveTo(m0[0],m0[1]); ctx.quadraticCurveTo(m0[0],m1[1],m1[0],m1[1]); ctx.stroke();
+      const on = a.state==='working' || (seated && a.state==='routine');
+      ctx.save(); if(on){ctx.shadowColor = '#3fdc8a'; ctx.shadowBlur = 8} ell(m1[0],m1[1],S*0.06,S*0.06,on?'#3fdc8a':'#1d3a2c'); ctx.restore();
+    }
+    // floppy ears over the headset
+    [-1,1].forEach(sg => {ctx.save(); ctx.translate(sg*bw*0.42, yt+bh*0.12); ctx.rotate(sg*(0.35+sway/S*0.5)); ctx.beginPath(); ctx.ellipse(0,S*0.2,S*0.15,S*0.3,0,0,Math.PI*2); ctx.fillStyle = shade(c,-0.15); ctx.fill(); ctx.strokeStyle = ol; ctx.lineWidth = lw; ctx.stroke(); ctx.restore()});
+  } else if(id==='bobo'){
+    if(!back){ctx.beginPath(); ctx.ellipse(0,yt+S*0.16,bw*0.44,S*0.2,0,Math.PI,Math.PI*2); ctx.closePath(); ctx.fillStyle = '#e03a4f'; ctx.fill(); ctx.strokeStyle = ol; ctx.lineWidth = lw; ctx.stroke(); ell(0,yt+S*0.04,S*0.09,S*0.05,'#ffffff')}
+    else {ctx.beginPath(); ctx.ellipse(0,yt+S*0.12,bw*0.44,S*0.2,0,Math.PI,Math.PI*2); ctx.fillStyle = '#e03a4f'; ctx.fill(); ell(0,yt+S*0.38,S*0.32,S*0.1,'#c62e43')}
+  } else if(id==='lulu'){
+    ctx.save(); ctx.translate(bw*0.05,yt+S*0.06); ctx.rotate(-0.18);
+    ctx.beginPath(); ctx.ellipse(0,0,bw*0.5,S*0.2,0,0,Math.PI*2); ctx.fillStyle = '#e0486e'; ctx.fill(); ctx.strokeStyle = ol; ctx.lineWidth = lw; ctx.stroke();
+    ell(0,-S*0.12,S*0.06,S*0.06,'#e0486e'); ctx.restore();
+    ctx.save(); ctx.translate(bw*0.5,yt+bh*0.22); ctx.rotate(0.7); ctx.fillStyle = '#ffd166'; ctx.fillRect(-S*0.04,-S*0.28,S*0.08,S*0.5); ctx.fillStyle = '#2a2340'; ctx.fillRect(-S*0.04,S*0.18,S*0.08,S*0.06); ctx.restore();
+  } else if(id==='wawa'){
+    if(!back){
+      ctx.strokeStyle = '#1b4f8a'; ctx.lineWidth = Math.max(1,S*0.05);
+      ctx.beginPath(); ctx.moveTo(-bw*0.3,yt+bh*0.62); ctx.lineTo(0,yb-bh*0.28); ctx.lineTo(bw*0.3,yt+bh*0.62); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; rr(-S*0.2,yb-bh*0.3,S*0.4,S*0.3,S*0.05); ctx.fill(); ctx.strokeStyle = '#1b4f8a'; ctx.stroke();
+      ctx.fillStyle = '#1b4f8a'; ctx.font = `700 ${Math.max(4,S*0.14)}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('OPS',0,yb-bh*0.3+S*0.15);
+    }
+  }
+  /* arms */
+  const hr = S*0.15;
+  let la = [-bw*0.52, yb-bh*0.36], ra = [bw*0.52, yb-bh*0.36];
+  if(moving){la[1] += Math.sin(ph)*S*0.12; ra[1] -= Math.sin(ph)*S*0.12}
+  const typing = back && seated && (a.state==='working' || a.state==='routine');
+  if(typing){const k = Math.sin(t*(a.state==='working'?20:9)); la = [-bw*0.36, yb-bh*0.5+k*S*0.05]; ra = [bw*0.36, yb-bh*0.5-k*S*0.05]}
+  if(a.state==='working' && !moving && !seated && !typing){const k = Math.sin(t*6); ra = [bw*0.58, yt+bh*0.35+k*S*0.08]}
+  if(happy){const wv = Math.sin(t*14)*S*0.1; ra = [bw*0.6+wv*0.4, yt+bh*0.12+Math.abs(wv)*0.3]; if(!greeting) la = [-bw*0.6-wv*0.4, yt+bh*0.12+Math.abs(wv)*0.3]}
+  if(a.carry){
+    ra = [bw*0.38, yb-bh*0.45];
+    const dw = S*0.5, dh = S*0.62, dx = bw*0.25, dy = yb-bh*0.62;
+    ctx.save(); ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 8; ctx.fillStyle = '#f7f5ff'; ctx.fillRect(dx-dw/2,dy-dh/2,dw,dh); ctx.restore();
+    ctx.strokeStyle = rgba(c,.95); ctx.lineWidth = 1; for(let k=0;k<3;k++) line(ctx,[dx-dw*0.3,dy-dh*0.22+k*dh*0.2],[dx+dw*0.3,dy-dh*0.22+k*dh*0.2]);
+  }
+  if(a.cup){
+    ra = [bw*0.5, yb-bh*0.5];
+    const cw = S*0.26, ch = S*0.3, cx2 = ra[0]+cw*0.35, cy2 = ra[1]-ch*0.55;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(cx2-cw/2,cy2-ch/2,cw,ch); ell(cx2,cy2-ch/2,cw/2,cw*0.2,'#6b3a1e');
+    if(!RM){ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(cx2,cy2-ch*0.7); ctx.quadraticCurveTo(cx2+Math.sin(t*4)*4,cy2-ch*1.3,cx2,cy2-ch*1.8); ctx.stroke()}
+  }
+  if(a.phone){
+    ra = [bw*0.62, yt+bh*0.05];
+    ctx.fillStyle = '#2a2340'; rr(ra[0]-S*0.1,ra[1]-S*0.42,S*0.22,S*0.36,S*0.05); ctx.fill(); ctx.fillStyle = '#8fdcff'; ctx.fillRect(ra[0]-S*0.07,ra[1]-S*0.38,S*0.16,S*0.26);
+  }
+  if(a.reading){
+    la = [-bw*0.3, yb-bh*0.5]; ra = [bw*0.3, yb-bh*0.5];
+    ctx.fillStyle = '#f7f5ff'; ctx.fillRect(-S*0.38,yb-bh*0.78,S*0.76,S*0.55); ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 1; ctx.strokeRect(-S*0.38,yb-bh*0.78,S*0.76,S*0.55);
+  }
+  [la,ra].forEach(p => {ctx.beginPath(); ctx.ellipse(p[0],p[1],hr,hr*1.15,0,0,Math.PI*2); ctx.fillStyle = shade(c,0.12); ctx.fill(); ctx.strokeStyle = ol; ctx.lineWidth = lw; ctx.stroke()});
+  ctx.restore();
+}
+function drawBot(){
+  const [px,py] = P(bot.pos.x,bot.pos.y,0.12), r = 0.32, rx = r*0.7071*TW*1.414, ry = rx*0.5;
+  ell(...P(bot.pos.x,bot.pos.y,0),rx*1.05,ry*1.05,'rgba(20,10,40,.28)');
+  ctx.fillStyle = '#3b3756'; ctx.beginPath(); ctx.ellipse(px,py+TH*0.12,rx,ry,0,0,Math.PI); ctx.lineTo(px-rx,py); ctx.ellipse(px,py,rx,ry,0,Math.PI,0,true); ctx.closePath(); ctx.fill();
+  const g = ctx.createRadialGradient(px-rx*0.3,py-ry*0.3,0,px,py,rx); g.addColorStop(0,'#f6f4fc'); g.addColorStop(1,'#bcb6d4');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px,py,rx,ry,0,0,Math.PI*2); ctx.fill();
+  const [lx,ly] = P(bot.pos.x+Math.cos(bot.ang)*r*0.6, bot.pos.y+Math.sin(bot.ang)*r*0.6, 0.13);
+  ctx.save(); const on = Math.sin(T*5)>-0.3; if(on){ctx.shadowColor = '#3ee6ff'; ctx.shadowBlur = 8} ell(lx,ly,TW*0.05,TW*0.03,on?'#3ee6ff':'#6a6784'); ctx.restore();
+}
+function drawOverlay(id,t,now){
+  const a = AG[id], c = a.tag || a.color, fs = Math.max(10, Math.min(13, TW*0.42));
+  const [px,py0] = P(a.pos.x, a.pos.y, a.z), py = py0 - TW*0.5*PS*2.35;
+  ctx.font = `600 ${fs}px ${FB}`; const tw = ctx.measureText(a.name).width+14, th = fs+6;
+  rr(px-tw/2,py-th,tw,th,th/2); ctx.fillStyle = 'rgba(8,6,24,.85)'; ctx.fill(); ctx.strokeStyle = rgba(c,.8); ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(a.name, px, py-th/2+0.5);
+  let b = (a.say && a.say.until>now) ? a.say.text : a.bubble;
+  if(!b && (a.state==='thinking')) b = '•'.repeat(Math.floor(t*3)%3+1);
+  const key = b && b.startsWith('•') ? '•' : b;
+  if(key !== a.lastB){a.lastB = key; a.bT0 = now}
+  if(!b) return;
+  const mono = /\(\)$/.test(b);
+  ctx.font = `${mono?500:600} ${fs}px ${mono?FM:FB}`;
+  const bw = ctx.measureText(b).width+18, bh = fs+12, bx = Math.max(4, Math.min(W-bw-4, px-bw/2)), by = py-th-8-bh;
+  const sc = RM ? 1 : Math.max(0.01, easeBack(Math.min(1,(now-a.bT0)/280)));
+  ctx.save(); ctx.translate(px,by+bh); ctx.scale(sc,sc); ctx.translate(-px,-(by+bh));
+  ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = 12;
+  rr(bx,by,bw,bh,9); ctx.fillStyle = 'rgba(16,12,44,.95)'; ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = 1.3; ctx.stroke(); ctx.restore();
+  ctx.fillStyle = 'rgba(16,12,44,.95)'; ctx.beginPath(); ctx.moveTo(px-5,by+bh-0.5); ctx.lineTo(px+5,by+bh-0.5); ctx.lineTo(px,by+bh+6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(b, bx+bw/2, by+bh/2+0.5);
+  ctx.restore();
+}
+function drawEmotes(now){
+  for(let i=emotes.length-1;i>=0;i--){
+    const e = emotes[i], age = (now-e.t0)/e.dur;
+    if(age>1){emotes.splice(i,1); continue}
+    if(age<0) continue;
+    let px, py;
+    if(e.id==='bot'){[px,py] = P(bot.pos.x,bot.pos.y,0.9)}
+    else {const a = AG[e.id]; [px,py] = P(a.pos.x+e.dx*0.7, a.pos.y-e.dx*0.7, a.z); py -= TW*0.5*PS*2.0}
+    const sc = RM ? 1 : easeBack(Math.min(1,age/0.2)), y = py - age*TW*1.1, fs = Math.max(14, TW*0.6);
+    ctx.save(); ctx.globalAlpha = 1-age*age; ctx.translate(px,y); ctx.scale(sc,sc);
+    ctx.font = `700 ${fs}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.shadowColor = e.c; ctx.shadowBlur = 14; ctx.fillStyle = e.c; ctx.fillText(e.g,0,0);
+    ctx.restore();
+  }
+}
+function drawBeams(){
+  beams.forEach(bm => {
+    const age = simT-bm.t0, al = Math.max(0, 1-age/bm.dur);
+    const s = P(bm.a.x,bm.a.y,0.6), e = P(bm.b.x,bm.b.y,0.6), m = [(s[0]+e[0])/2, (s[1]+e[1])/2 - TH*3.6];
+    ctx.save(); ctx.shadowColor = bm.c; ctx.shadowBlur = 12; ctx.strokeStyle = rgba(bm.c, al*0.8); ctx.lineWidth = 2;
+    ctx.setLineDash([7,6]); ctx.lineDashOffset = RM?0:-simT*45;
+    ctx.beginPath(); ctx.moveTo(s[0],s[1]); ctx.quadraticCurveTo(m[0],m[1],e[0],e[1]); ctx.stroke(); ctx.setLineDash([]);
+    const u = Math.min(1, age/(bm.dur*0.65));
+    if(u<1){
+      const q=(1-u)*(1-u), w=2*(1-u)*u, v=u*u;
+      const dx = q*s[0]+w*m[0]+v*e[0], dy = q*s[1]+w*m[1]+v*e[1];
+      const tx = 2*(1-u)*(m[0]-s[0])+2*u*(e[0]-m[0]), ty = 2*(1-u)*(m[1]-s[1])+2*u*(e[1]-m[1]);
+      const Lp = Math.max(7, TW*0.36);
+      ctx.translate(dx,dy); ctx.rotate(Math.atan2(ty,tx)); ctx.shadowColor = bm.c; ctx.shadowBlur = 16;
+      poly(ctx,[[Lp,0],[-Lp*0.7,-Lp*0.6],[-Lp*0.3,0]],'#ffffff'); poly(ctx,[[Lp,0],[-Lp*0.3,0],[-Lp*0.7,Lp*0.6]],'#dcd8ff');
+      ctx.strokeStyle = rgba(bm.c,.9); ctx.lineWidth = 1; line(ctx,[Lp,0],[-Lp*0.3,0]);
+      if(!RM && Math.random()<0.8) sparks.push({x:dx,y:dy,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30,g:20,life:0.5,max:0.5,c:pickR([bm.c,'#ffffff']),s:Math.max(1.5,TW*0.07)});
+    } else if(!bm.hit){bm.hit = true; burst(e[0],e[1],[bm.c,'#ffffff'],16,100)}
+    ctx.restore();
+  });
+}
+function drawHighlight(){
+  if(!hl) return;
+  const zn = hl==='wilson' ? [0,0,7,6.5] : AG[hl].zone, c = AG[hl].tag || AG[hl].color, [x0,y0,x1,y1] = zn;
+  ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = 18;
+  poly(ctx,[P(x0,y0),P(x1,y0),P(x1,y1),P(x0,y1)], rgba(c,0.1), rgba(c,1), 2.2); ctx.restore();
+}
+function drawGlows(N){
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const glow = (x,y,z,r,col,al) => {if(al<0.01) return; const [px,py] = P(x,y,z), R = r*TW; const g = ctx.createRadialGradient(px,py,0,px,py,R); g.addColorStop(0,rgba(col,al)); g.addColorStop(1,rgba(col,0)); ctx.fillStyle = g; ctx.fillRect(px-R,py-R,R*2,R*2)};
+  TEAM.forEach(id => {const a = AG[id], [x0,y0] = a.zone; glow(x0+2.85,y0+1.2,1.15,1.5,a.color,(a.state==='working'?0.3:0.14)*(0.35+0.65*N))});
+  glow(4.4,3.85,1.2,1.3,'#ffcf80',0.5*N);
+  glow(9.4,21.0,2.0,1.8,'#ffcf80',0.45*N);
+  glow(C.x,C.y,3.0,2.0,'#ffd9a0',0.22*N);
+  glow(5.75,0.9,1.0,1.1,'#5fb8ff',0.35*N);
+  glow(16.0,18.0,1.4,0.8,'#ff4d6d',0.2*N);
+  if(fx.ring) glow(24.9,5.6,1.7,1.8,'#ffffff',0.5);
+  if(fx.rec){glow(2.8,21.2,1.75,1.5,'#fff3d6',0.35); glow(6.0,17.4,1.75,1.5,'#fff3d6',0.35)}
+  ctx.restore();
+}
+function drawStamp(now){
+  if(!stamp) return;
+  const age = (now-stamp.t0)/2800; if(age>1){stamp = null; return}
+  const [x,y] = P(3.3,4.1,1.7), k = Math.min(1,age/0.12), sc = RM ? 1 : 2.2-1.2*k, al = age>0.8 ? (1-age)/0.2 : 1, fs = Math.max(12,TW*0.5);
+  ctx.save(); ctx.globalAlpha = al; ctx.translate(x,y); ctx.rotate(-0.22); ctx.scale(sc,sc);
+  ctx.font = `800 ${fs}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tw = ctx.measureText('APPROVED').width+fs;
+  ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 10; ctx.strokeStyle = '#ff4d6d'; ctx.lineWidth = 3;
+  rr(-tw/2,-fs*0.8,tw,fs*1.6,6); ctx.stroke(); ctx.fillStyle = '#ff4d6d'; ctx.fillText('APPROVED',0,1);
+  ctx.restore();
+}
+function drawBanner(now){
+  if(!banner) return;
+  const age = (now-banner.t0)/3800; if(age>1){banner = null; return}
+  const sc = RM ? 1 : easeBack(Math.min(1,age/0.16)), al = age>0.75 ? (1-age)/0.25 : 1, fs = Math.max(20, Math.min(54, W*0.06));
+  ctx.save(); ctx.globalAlpha = al; ctx.translate(W/2,H*0.15); ctx.scale(sc,sc);
+  ctx.font = `700 ${fs}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const g = ctx.createLinearGradient(-fs*4.5,0,fs*4.5,0); g.addColorStop(0,'#ffd166'); g.addColorStop(0.5,'#ffffff'); g.addColorStop(1,'#ff6fc8');
+  ctx.shadowColor = '#ff9a8b'; ctx.shadowBlur = 30; ctx.fillStyle = g; ctx.fillText(banner.t1||'MISSION APPROVED',0,0);
+  ctx.shadowBlur = 0; ctx.font = `600 ${fs*0.34}px ${FB}`; ctx.fillStyle = '#eceaff'; ctx.fillText(banner.t2||'Wilson 已批准 · 全员庆祝',0,fs*0.78);
+  ctx.restore();
+}
+function camT(c){c.setTransform(DPR,0,0,DPR,0,0); c.translate(W/2+cam.x, H/2+cam.y); c.scale(zoom,zoom); c.translate(-W/2,-H/2)}
+function draw(t,now){
+  if(!cv.width || !cv.height || !lay.width || !BG.day.width) return;
+  T = t; const N = nightK();
+  zoom = 1.025 + (RM ? 0 : Math.sin(t*0.25)*0.006);
+  ctx = mainCtx;
+  ctx.setTransform(DPR,0,0,DPR,0,0); ctx.fillStyle = '#06051a'; ctx.fillRect(0,0,W,H);
+  camT(ctx);
+  const a2 = WT.n, a1 = a2<0.999 ? WT.k/(1-a2) : 0;
+  ctx.drawImage(BG.day,0,0,W,H);
+  if(a1>0.004){ctx.globalAlpha = Math.min(1,a1); ctx.drawImage(BG.dusk,0,0,W,H)}
+  if(a2>0.004){ctx.globalAlpha = Math.min(1,a2); ctx.drawImage(BG.night,0,0,W,H)}
+  ctx.globalAlpha = 1;
+  drawSky(t); drawSigns(t,N); drawTV(t); drawHighlight(); drawHQFloor(t);
+  ctx.save(); ctx.globalAlpha = 0.05+0.12*N;
+  ALL.forEach(id => {const a = AG[id], sy = P(a.pos.x,a.pos.y,0)[1]; ctx.save(); ctx.translate(0,2*sy); ctx.scale(1,-1); drawPet(id,t,true); ctx.restore()});
+  ctx.restore();
+  // object layer, tinted at night
+  ctx = lctx; ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,lay.width,lay.height); camT(ctx);
+  const items = FURN.slice();
+  TEAM.forEach(id => {const a = AG[id], [x0,y0] = a.zone; items.push({k:x0+y0+3.8, f:()=>drawDesk(id,t)}); items.push({k:a.seat.x+a.seat.y-0.02, f:()=>stool(id)})});
+  ALL.forEach(id => {const a = AG[id]; items.push({k:a.pos.x+a.pos.y, f:()=>drawPet(id,t,false)})});
+  items.push({k:bot.pos.x+bot.pos.y, f:drawBot});
+  items.sort((p,q)=>p.k-q.k).forEach(it=>it.f());
+  if(N>0.01){ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = `rgba(16,12,48,${0.4*N})`; ctx.fillRect(0,0,lay.width,lay.height); ctx.globalCompositeOperation = 'source-over'}
+  ctx = mainCtx; ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(lay,0,0); camT(ctx);
+  drawGlows(N);
+  drawPendant(N);
+  ctx.font = `600 ${Math.max(8,TW*0.3)}px ${FM}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  parts.forEach(p => {
+    const [x,y] = P(p.x,p.y,p.z), al = p.life/p.max;
+    if(p.kind==='chat'){const s = TW*0.32; ctx.globalAlpha = Math.min(1,al*1.5); ctx.fillStyle = p.c; rr(x-s*0.7,y-s*0.45,s*1.4,s*0.9,s*0.35); ctx.fill(); ctx.fillStyle = p.c==='#ffffff'?'#3fdc8a':'#ffffff'; [-0.3,0,0.3].forEach(k=>{ctx.beginPath(); ctx.arc(x+k*s,y,s*0.08,0,Math.PI*2); ctx.fill()}); if(p.unread){ell(x+s*0.65,y-s*0.4,s*0.16,s*0.16,'#ff3355')} ctx.globalAlpha = 1}
+    else {ctx.fillStyle = rgba(p.c, al*0.95); ctx.fillText(p.g,x,y)}
+  });
+  sparks.forEach(p => {
+    const al = Math.max(0,p.life/p.max);
+    if(p.dust){ell(p.x,p.y,p.s*(1.6-al),p.s*(1.6-al)*0.6,rgba(p.c,al*0.3)); return}
+    ctx.fillStyle = rgba(p.c,al); const s = p.s;
+    ctx.beginPath(); ctx.moveTo(p.x,p.y-s*1.6); ctx.lineTo(p.x+s*0.45,p.y); ctx.lineTo(p.x,p.y+s*1.6); ctx.lineTo(p.x-s*0.45,p.y); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(p.x-s*1.6,p.y); ctx.lineTo(p.x,p.y+s*0.45); ctx.lineTo(p.x+s*1.6,p.y); ctx.lineTo(p.x,p.y-s*0.45); ctx.closePath(); ctx.fill();
+  });
+  drawBeams();
+  drawZoneLabels();
+  ALL.slice().sort((p,q)=>(AG[p].pos.x+AG[p].pos.y)-(AG[q].pos.x+AG[q].pos.y)).forEach(id => drawOverlay(id,t,now));
+  drawEmotes(now); drawStamp(now);
+  confetti.forEach(p => {const fl = Math.abs(Math.cos(p.rot*1.7)); ctx.save(); ctx.globalAlpha = Math.min(1,p.life); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2*fl,p.w,p.h*fl+0.5); ctx.restore()});
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(vig){ctx.globalAlpha = 0.35+0.65*N; ctx.fillStyle = vig; ctx.fillRect(0,0,W,H); ctx.globalAlpha = 1}
+  drawBanner(now);
+}
+let last = performance.now(), clockAt = 0;
+function frame(now){
+  const rdt = Math.min(0.05,(now-last)/1000); last = now;
+  const dt = rdt*speed; simT += dt;
+  update(dt,rdt); draw(now/1000, now);
+  if(now-clockAt > 500){clockAt = now; $('#clock').textContent = clockText()}
+  requestAnimationFrame(frame);
+}
+
+/* ---------- dashboard UI ---------- */
+const PET_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="11" cy="11" r="5" fill="currentColor" opacity=".7"/><circle cx="29" cy="11" r="5" fill="currentColor" opacity=".7"/><rect x="5" y="9" width="30" height="28" rx="12" fill="currentColor"/><ellipse cx="15" cy="22" rx="2.4" ry="3" fill="#1a1030"/><ellipse cx="25" cy="22" rx="2.4" ry="3" fill="#1a1030"/><circle cx="15.8" cy="21" r=".9" fill="#fff"/><circle cx="25.8" cy="21" r=".9" fill="#fff"/><path d="M17.5 28 Q20 30.5 22.5 28" stroke="#1a1030" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
+const deptsEl = $('#depts'), cards = {wilson: $('#bossCard')};
+function fmt(k){const v = k.v; return k.f==='x' ? v.toFixed(1)+'×' : k.f==='s' ? Math.round(v)+' 秒' : k.f==='p' ? Math.round(v)+'%' : k.f==='p1' ? v.toFixed(1)+'%' : Math.round(v).toLocaleString('en-US')}
+function bindHover(el,id){
+  el.addEventListener('mouseenter',()=>{hl=id; el.classList.add('hl')});
+  el.addEventListener('mouseleave',()=>{if(hl===id) hl=null; el.classList.remove('hl')});
+  el.addEventListener('focus',()=>{hl=id});
+  el.addEventListener('blur',()=>{if(hl===id) hl=null});
+  el.addEventListener('click',()=>greet(id));
+  el.addEventListener('keydown',e=>{if(e.target!==el) return; if(e.key==='Enter'||e.key===' '){e.preventDefault(); greet(id)}});
+}
+bindHover(cards.wilson,'wilson');
+TEAM.forEach(id => {
+  const a = AG[id], el = document.createElement('article');
+  el.className = 'dept'; el.style.setProperty('--c', a.color); el.tabIndex = 0;
+  el.innerHTML = `<div class="dhead">${PET_SVG}<div><div class="dname">${a.name}</div><div class="ddept">${a.dept} · ${a.cn}</div></div><span class="pill"></span></div>
+    <div class="dact"></div>
+    <div class="kpis">${KPI[id].map((k,i)=>`<div><span>${k.l}</span><b data-k="${i}">${fmt(k)}</b></div>`).join('')}<div><span>完成子任务</span><b class="cnt">0</b></div></div>
+    <div class="spark" aria-hidden="true">${'<span></span>'.repeat(18)}</div>
+    <div class="auto">⚡ <span class="an"></span> · 已自动完成 <b class="ac">0</b> 次</div>
+    <div class="dbtns"><button type="button" class="dbtn" data-act="assign">派任务给 ${a.name}</button><button type="button" class="dbtn ghost" data-act="role">岗位与自动化</button></div>`;
+  bindHover(el,id);
+  el.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', e => {e.stopPropagation(); b.dataset.act==='role' ? openRole(id) : assignTo(id)}));
+  deptsEl.appendChild(el); cards[id] = el;
+});
+const ovEl = document.createElement('article');
+ovEl.className = 'dept ov'; ovEl.style.setProperty('--c','#ffd166');
+ovEl.innerHTML = `<div class="dhead"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="22" width="6" height="12" rx="2" fill="currentColor"/><rect x="14" y="14" width="6" height="20" rx="2" fill="currentColor"/><rect x="23" y="18" width="6" height="16" rx="2" fill="currentColor"/><rect x="32" y="8" width="4" height="26" rx="2" fill="currentColor"/></svg><div><div class="dname">公司今日</div><div class="ddept">Wilson &amp; Co. · 实时（示例）</div></div><span class="pill" style="--pc:#4dffa6">LIVE</span></div>
+  <div class="kpis k4"><div><span>订单</span><b id="ov0"></b></div><div><span>广告线索</span><b id="ov1"></b></div><div><span>WhatsApp 对话</span><b id="ov2"></b></div><div><span>社媒互动</span><b id="ov3"></b></div></div>`;
+deptsEl.appendChild(ovEl);
+function renderKPI(id){const el = cards[id]; if(!el) return; el.querySelectorAll('b[data-k]').forEach(b=>{b.textContent = fmt(KPI[id][+b.dataset.k])})}
+function renderOV(){$('#ov0').textContent = fmt(KPI.wawa[0]); $('#ov1').textContent = fmt(KPI.nana[1]); $('#ov2').textContent = fmt(KPI.kiki[0]); $('#ov3').textContent = fmt(KPI.mimi[0])}
+setInterval(() => {
+  TEAM.forEach(id => {
+    const boost = AG[id].state==='working' ? 2 : 1;
+    KPI[id].forEach(k => {
+      if(k.inc) k.v += (k.inc[0] + Math.floor(Math.random()*(k.inc[1]-k.inc[0]+1)))*boost;
+      if(k.j) k.v = clamp(k.v + (Math.random()-0.5)*k.j*2 + (k.b-k.v)*0.1, k.b*0.9, k.b*1.1);
+    });
+    renderKPI(id);
+  });
+  renderOV();
+}, 2000);
+function renderCard(id){
+  const a = AG[id], el = cards[id]; if(!el) return;
+  const [label,col] = ST[a.state] || ST.idle;
+  const pill = el.querySelector('.pill'); pill.textContent = label; pill.style.setProperty('--pc', col);
+  el.querySelector('.dact').textContent = a.action;
+  const cnt = el.querySelector('.cnt'); if(cnt) cnt.textContent = a.done;
+  const an = el.querySelector('.an'); if(an && AUTOS[id]){an.textContent = `${AUTOS[id].filter(u=>u.on).length}/${AUTOS[id].length} 个自动化开启`; el.querySelector('.ac').textContent = a.autoDone||0}
+}
+function renderSpark(id){
+  const el = cards[id]; if(!el) return; const bars = el.querySelectorAll('.spark span'); if(!bars.length) return;
+  AG[id].act.forEach((v,i)=>{bars[i].style.height = Math.min(100, 8+v*28)+'%'});
+}
+setInterval(()=>ALL.forEach(id=>{const a=AG[id]; a.act.shift(); a.act.push(a.state==='routine'&&Math.random()<0.3?0.4:0); renderSpark(id)}), 1400);
+function setState(id,st,action,bubble){const a=AG[id]; a.state=st; if(action!=null) a.action=action; a.bubble=bubble||null; renderCard(id)}
+function setRoutine(id){const a = AG[id]; a.carry = false; a.cup = false; a.phone = false; setState(id,'routine',pickR(ROUTINE[id]),null)}
+function greet(id){const a=AG[id]; a.jump=0.6; a.say={text:INTRO[id], until:performance.now()+2400, happy:true}; pop(id,'♥',id==='wilson'?'#ffd166':'#ff6fc8',2)}
+
+const logEl = $('#log'); let evCount = 0;
+function stamp2(){const d=new Date(); return [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':')}
+function emit(id, ev, extra={}){
+  const a = AG[id]; a.act[a.act.length-1]++; renderSpark(id); react(id,ev);
+  const json = esc(JSON.stringify(Object.assign({agent:id, event:ev}, extra))).replace(`&quot;${id}&quot;`, `<b>&quot;${id}&quot;</b>`);
+  const row = document.createElement('div'); row.className = 'ev'; row.style.setProperty('--c', a.tag || a.color);
+  row.innerHTML = `<span class="t">${stamp2()}</span><code>${json}</code>`;
+  logEl.prepend(row); while(logEl.children.length>80) logEl.lastChild.remove();
+  $('#evn').textContent = (++evCount)+' 条';
+}
+/* ---------- roles & automations ---------- */
+const ROLES = {
+  sasa:{title:'总经理助理 · 任务总调度', duty:['接收 Wilson 的指令，拆给各部门','跟进进度，催办卡住的任务','把各部门成果汇总成方案送审'], daily:['管理 Wilson 的日程和会议','写会议纪要','每周收齐各部门周报'], deliver:'周报、会议纪要、项目方案', kpi:'任务按时完成率', approve:['对外合作','对外日程'], hand:'收各部门周报 → 汇总给 Wilson'},
+  nana:{title:'Meta 广告投放专员', duty:['管理 FB / IG 广告账户','搭建受众、测试素材','控制成本，提升 ROAS'], daily:['每天看数据，关掉亏钱的广告','每周测新素材和新受众'], deliver:'每日数据简报、周投放报告', kpi:'ROAS、CPA、线索数', approve:['增加预算','开新广告系列'], hand:'从 Lulu、Bobo 拿素材'},
+  mimi:{title:'社媒内容运营', duty:['运营 IG / FB / TikTok 账号','排内容日历','负责粉丝增长和互动'], daily:['每天发帖和 Story','回评论','追热点、写文案'], deliver:'每周内容日历、月度社媒报告', kpi:'粉丝增长、互动率', approve:['品牌重要帖子','合作帖','下周内容日历'], hand:'从 Lulu、Bobo 拿素材；从 Kiki 拿客户问题做内容'},
+  kiki:{title:'WhatsApp 客服兼销售跟进', duty:['回复咨询并促成下单','处理售后与退换货','维护老客户'], daily:['回复未读消息','跟进下单未付款的客户','维护快捷回复'], deliver:'每日对话汇总、客户问题分类', kpi:'首次回复时间、咨询成交率', approve:['群发消息','退款','额外折扣'], hand:'从 Wawa 拿库存与发货时间'},
+  lulu:{title:'平面设计师', duty:['维护品牌视觉统一','做广告素材、海报、产品图'], daily:['按需求出图','导出各平台尺寸','维护模板与规范'], deliver:'主视觉、广告图、海报', kpi:'按时交稿、广告素材点击率', approve:['新品主视觉','品牌形象改动'], hand:'设计图交给 Nana、Mimi'},
+  bobo:{title:'视频拍摄与剪辑', duty:['拍产品、开箱、直播视频','给广告和社媒供片','管理视频素材库'], daily:['按分镜拍摄','剪 15s / 30s 版本，加字幕和配乐'], deliver:'Reels 与广告用成片', kpi:'按时交片、完播率', approve:['模特或网红出镜'], hand:'成片交给 Nana、Mimi'},
+  wawa:{title:'运营经理', duty:['管订单、库存、发货','处理物流异常','把关流程与时间线'], daily:['查当日订单和延迟单','盘点库存','更新流程看板'], deliver:'每日订单报告、库存预警', kpi:'准时发货率、缺货次数', approve:['采购补货','更换物流'], hand:'库存与发货时间交给 Kiki'},
+};
+const AUTOS = {
+  sasa:[{n:'整理老板今日日程',cad:'每天 09:00',ev:200,tools:[['read_calendar','读取日历与邮件'],['draft_agenda','整理今日日程']],out:'今日日程 5 项已整理，已发给 Wilson'},
+        {n:'汇总各部门周报',cad:'每周五 17:00',ev:320,tools:[['collect_reports','收集 6 个部门周报'],['merge_report','合并成一页周报并打印',1]],out:'本周周报已汇总：订单、广告、社媒、客服、视频、设计 6 部分'}],
+  nana:[{n:'检查广告并暂停亏损广告',cad:'每天 09:00',ev:180,tools:[['pull_ads_data','拉取昨日广告数据'],['pause_losers','暂停 ROAS 低于 1.5 的广告',1]],out:'暂停 2 个亏损广告，每天约省 18% 花费'},
+        {n:'新素材 A/B 测试',cad:'每周一',ev:300,ap:1,tools:[['pick_creatives','挑选新素材'],['draft_test','建测试广告组（批准后才上线）']],out:'新素材测试组已建好，日预算 50，等你批准上线'}],
+  mimi:[{n:'发布已排期的帖子',cad:'每天 12:00 / 20:00',ev:190,tools:[['load_calendar','读取已批准的内容日历'],['publish_post','发布帖子与 Story',1]],out:'今日帖子 + 2 条 Story 已按日历发布'},
+        {n:'回复评论区',cad:'每 2 小时',ev:150,tools:[['fetch_comments','拉取新评论'],['reply_comments','回复常规评论，敏感的转给你']],out:'回复 23 条评论，1 条投诉已转给 Kiki'},
+        {n:'排下周内容日历',cad:'每周日',ev:340,ap:1,tools:[['research_trends','研究热门话题'],['plan_calendar','排 7 天内容日历']],out:'下周内容日历：5 条帖子 + 3 条 Reels，等你批准'}],
+  kiki:[{n:'回复新的 WhatsApp 咨询',cad:'每 5 分钟',ev:110,tools:[['open_inbox','读取未读消息'],['reply_whatsapp','按话术回复并报价']],out:'回复 12 位客户，3 位已下单'},
+        {n:'跟进未付款订单',cad:'每天 18:00',ev:230,tools:[['find_unpaid','找出下单未付款的客户'],['send_reminder','一对一发送付款提醒']],out:'提醒 8 位客户，5 位已付款'}],
+  lulu:[{n:'收到需求自动出图',cad:'收到设计需求时',ev:220,tools:[['read_brief','读取设计需求'],['design_export','出图并导出各尺寸',1]],out:'4 张广告图 + 各平台尺寸已导出给 Nana'},
+        {n:'品牌规范检查',cad:'每周三',ev:330,tools:[['scan_posts','检查各平台已发布图片'],['flag_issues','标出不符合规范的图']],out:'检查 38 张图，2 张字体不规范，已通知 Mimi'}],
+  bobo:[{n:'整理素材库',cad:'每天 19:00',ev:260,tools:[['scan_footage','扫描今日素材'],['tag_archive','分类打标签归档']],out:'今日素材 46 段已分类归档'},
+        {n:'直播精华自动剪辑',cad:'每场直播结束后',ev:290,tools:[['find_highlights','找出高互动片段'],['edit_clips','剪成 3 条精华',1]],out:'3 条直播精华已剪好，交给 Mimi 发布'}],
+  wawa:[{n:'检查延迟发货订单',cad:'每小时',ev:160,tools:[['pull_orders','拉取未发货订单'],['notify_courier','通知物流并更新看板',1]],out:'发现 2 单延迟，已通知物流，并同步给 Kiki 回复客户'},
+        {n:'库存盘点与补货单',cad:'每天 08:00',ev:280,ap:1,tools:[['count_stock','盘点库存'],['draft_po','生成补货单（批准后才采购）']],out:'玫瑰精华液低于安全库存，补货单 600 瓶等你批准'}],
+};
+Object.values(AUTOS).forEach(list => list.forEach(u => {u.on = true; u.runs = 0; u.next = 1e9}));
+
+/* ---------- task records ---------- */
+const TS = {queued:['排队中','#9d99c9'], running:['进行中','#3ee6ff'], review:['待你审批','#ffd166'], revising:['修改中','#ff9466'], done:['已完成','#4dffa6']};
+const tasks = [], tasksEl = $('#tasks'), running = new Set();
+let focus = null, teamRunning = false, tid = 0, pendingAp = null, tFilter = 'all';
+const hm = () => {const d = new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const whoName = t => t.auto ? `⚡ 自动化 · ${AG[t.who].name}` : t.who==='all' ? '全公司 · Sasa 拆解' : `${AG[t.who].name} · ${AG[t.who].cn}`;
+const whoColor = t => t.who==='all' ? '#ffd166' : AG[t.who].color;
+function renderTasks(){
+  const nrev = tasks.filter(t=>t.status==='review').length;
+  $('#tcount').textContent = `${tasks.length} 个${nrev ? ` · ${nrev} 个待审批` : ''}`;
+  const list = tasks.filter(t => tFilter==='all' || (tFilter==='me' && !t.auto) || (tFilter==='auto' && t.auto) || (tFilter==='review' && t.status==='review')).slice(0,40);
+  if(!list.length){tasksEl.innerHTML = `<p class="empty">${tFilter==='review' ? '目前没有等你审批的任务。' : '派出的任务和自动化任务会出现在这里：排队中 → 进行中 →（需要时）待你审批 → 已完成。'}</p>`; return}
+  const lastDone = list.find(x=>x.status==='done');
+  tasksEl.innerHTML = list.map(t => {
+    const [lab,sc] = TS[t.status], pct = Math.round(t.prog/t.total*100), open = t.open ?? (t.status!=='done' || t===lastDone);
+    return `<article class="task${t.status==='review'?' rv':''}" style="--c:${whoColor(t)}">
+      <div class="th"><span class="tw">${esc(whoName(t))}</span><span class="tag">${t.needAp?'需审批':'直接完成'}</span><span class="pill" style="--pc:${sc}">${lab}</span></div>
+      <div class="tt">${esc(t.title)}${t.auto?` <span class="tag">${esc(t.au.cad)}</span>`:''}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="tm"><span>${t.created} ${t.auto?'自动触发':'派出'}${t.finished?` · ${t.finished} 完成`:''}</span><span>${pct}%</span></div>
+      ${t.status==='review'&&pendingAp&&pendingAp.t===t?`<div class="rvb"><button type="button" class="ap" data-ap="1">批准 ✓</button><button type="button" data-rv="1">退回修改</button></div>`:''}
+      ${t.outs.length?`<details data-id="${t.id}"${open?' open':''}><summary>交付物（${t.outs.length}）</summary><div class="outs">${t.outs.map(o=>`<div class="out${o.final?' final':''}" style="--c:${o.c}"><i></i><div><b>${esc(o.who)}</b>${esc(o.text)}</div></div>`).join('')}</div></details>`:''}
+    </article>`;
+  }).join('');
+}
+tasksEl.addEventListener('toggle', e => {const d = e.target; if(d.tagName==='DETAILS'){const t = tasks.find(x=>x.id===+d.dataset.id); if(t) t.open = d.open}}, true);
+tasksEl.addEventListener('click', e => {const b = e.target.closest('button'); if(!b) return; if(b.dataset.ap) decide(true); if(b.dataset.rv) decide(false)});
+document.querySelectorAll('#tf button').forEach(b => b.addEventListener('click', () => {
+  tFilter = b.dataset.f; document.querySelectorAll('#tf button').forEach(x => x.setAttribute('aria-pressed', x===b ? 'true' : 'false')); renderTasks();
+}));
+function addOut(t,id,text,final,label){
+  const o = {who: final ? (label||'已完成') : AG[id].name, text, c: final ? '#ffd166' : AG[id].color, final:!!final};
+  final ? t.outs.unshift(o) : t.outs.push(o); renderTasks();
+}
+function setBar(){const t = focus; prog = t ? t.prog : 0; total = t ? t.total : 1; const p = Math.round(prog/total*100); $('#bar').style.width = p+'%'; $('#pnum').textContent = p+'%'}
+function bump(t){t.prog = Math.min(t.total, t.prog+1); if(t===focus) setBar(); renderTasks()}
+function setPhases(labels,t){if(t && t!==focus) return; [...$('#phases').children].forEach((s,k)=>{s.textContent = labels[k]})}
+function setPhase(i,txt,t){
+  if(t && t!==focus) return;
+  [...$('#phases').children].forEach((s,k)=>{s.className = k<i?'ok':k===i?'on':''});
+  $('#ptxt').textContent = txt;
+}
+function waitApproval(t){
+  if(focus!==t){focus = t; setPhases(['自动触发','执行中','完成','送审','老板审批']); setBar()}
+  t.status = 'review';
+  $('#rvTitle').textContent = `${whoName(t)}：${t.title}`; $('#review').hidden = false;
+  $('#mtag').innerHTML = `等你审批：<b>${esc(t.title)}</b>`;
+  setPhase(4,'等你审批：点「批准」或「退回修改」',t);
+  return new Promise(r => {pendingAp = {t, r}; renderTasks()});
+}
+function decide(ok){if(!pendingAp) return; const {t,r} = pendingAp; pendingAp = null; $('#review').hidden = true; t.status = ok ? 'running' : 'revising'; renderTasks(); r(ok ? 'ok' : 'revise')}
+function updateQueue(){
+  const q = tasks.filter(t=>t.status==='queued').length;
+  $('#qinfo').textContent = `${running.size} 个进行中${q ? ` · ${q} 个排队` : ''}`;
+}
+
+/* ---------- idle life ---------- */
+const held = new Set();
+function hold(id){const a = AG[id]; a.gen = (a.gen||0)+1; held.add(id); a.wander = false; a.carry = a.cup = a.phone = a.reading = false; a.bubble = null}
+function release(id){held.delete(id)}
+const gensOf = ids => ids.map(id=>AG[id].gen||0);
+const alive = (ids,gs) => !busy && ids.every((id,i)=>(AG[id].gen||0)===gs[i]);
+function abortIdle(ids,gs){
+  foos.on = false;
+  ids.forEach((id,i) => {
+    const a = AG[id]; if((a.gen||0)!==gs[i]) return;
+    a.wander = false; a.cup = a.carry = a.phone = false; a.bubble = null;
+    if(busy) return;
+    go(id,a.home).then(()=>{if((a.gen||0)===gs[i] && !busy){id==='wilson' ? setState(id,'office','在办公室处理邮件',null) : setRoutine(id)}});
+  });
+}
+async function backHome(id,ok){await go(id,AG[id].home); if(!ok()) return false; setRoutine(id); return true}
+const STATION_TXT = {nana:['去大屏前看广告数据','这组受众跑得不错'], mimi:['在补光灯前拍日常 Story','今天也要元气满满！'], lulu:['去画架前画草图','灵感来了'], wawa:['更新流程看板','这单要跟紧'], bobo:['调试摄影机','白平衡好了'], sasa:['去打印会议资料','打印好啦']};
+async function wander(id){
+  const a = AG[id], g = gensOf([id]), ok = () => alive([id],g), bail = () => abortIdle([id],g);
+  a.wander = true;
+  if(id==='wilson'){
+    const r = Math.random(), dest = r<0.4 ? BOSS_TV : r<0.7 ? BOSS_TANK : BOSS_SHELF;
+    setState(id,'office', dest===BOSS_TV ? '看公司实时大屏' : dest===BOSS_TANK ? '给鱼缸里的鱼喂食' : '在书架前翻书', null);
+    await go(id,dest); if(!ok()) return bail();
+    a.bubble = dest===BOSS_TV ? pickR(['数据不错','订单涨了','团队给力']) : dest===BOSS_TANK ? pickR(['小鱼吃饭啦','今天也很精神']) : pickR(['这本不错','学习一下']);
+    if(dest===BOSS_TANK && !RM){const [px,py] = P(5.75,0.65,1.4); burst(px,py,['#ffd166','#ffffff'],10,50)}
+    await sleep(2600); if(!ok()) return bail();
+    a.bubble = null; await go(id,a.home); if(!ok()) return bail();
+    setState(id,'office','在办公室处理邮件',null); a.wander = false; return;
+  }
+  const r = Math.random();
+  if(a.station && r<0.3){
+    const txt = STATION_TXT[id];
+    setState(id,'away',txt[0],null); await go(id,a.station); if(!ok()) return bail();
+    if(id==='mimi'){a.phone = true; a.say = {text:txt[1], until:performance.now()+1800, happy:true}} else a.bubble = txt[1];
+    a.state = 'working'; await sleep(3400); if(!ok()) return bail();
+    a.phone = false; a.state = 'away'; a.bubble = null; if(id==='sasa') a.carry = true;
+    if(!await backHome(id,ok)) return bail();
+  } else if(id==='sasa' && r<0.6 && !held.has('wilson')){
+    setState(id,'away','给 Wilson 送咖啡','去倒咖啡'); await go(id,COFFEE); if(!ok()) return bail();
+    a.bubble = '拿铁做好啦'; await sleep(1200); if(!ok()) return bail();
+    if(held.has('wilson')){a.bubble = '老板在忙，等会再送'; if(!await backHome(id,ok)) return bail(); a.wander = false; return}
+    a.cup = true; a.bubble = '老板，咖啡'; await go(id,BOSS_VISIT); if(!ok()) return bail();
+    a.cup = false; a.bubble = null;
+    if(!held.has('wilson')){AG.wilson.say = {text:'谢谢 Sasa！', until:performance.now()+1800, happy:true}; pop('wilson','♥','#ffd166')}
+    await sleep(1400); if(!ok()) return bail();
+    if(!await backHome(id,ok)) return bail();
+  } else if(r<0.55){
+    setState(id,'away','去茶水间倒杯咖啡',null); await go(id,COFFEE); if(!ok()) return bail();
+    a.cup = true; a.bubble = pickR(['来杯拿铁','续命咖啡','补充能量']);
+    await sleep(1600); if(!ok()) return bail();
+    a.bubble = null; await go(id,SOFA); if(!ok()) return bail();
+    a.bubble = pickR(['休息五分钟','这沙发真舒服']); await sleep(1800); if(!ok()) return bail();
+    a.bubble = null; if(!await backHome(id,ok)) return bail();
+  } else {
+    const oid = pickR(TEAM.filter(x=>x!==id)), b = AG[oid], file = Math.random() < 0.6;
+    const what = pickR(['周报草稿','素材链接','会议纪要','数据截图','客户反馈']);
+    a.carry = file; setState(id,'away', file ? `给 ${b.name} 送「${what}」` : `去找 ${b.name} 聊两句`, file ? '送文件' : null);
+    await go(id,b.visitPlace); if(!ok()) return bail();
+    if(file){beam(a.pos,b.seat,a.color); a.carry = false; emit(id,'handoff',{to:oid, payload:what}); b.say = {text:`收到「${what}」`, until:performance.now()+1800}}
+    else {a.bubble = pickR(['午饭吃什么？','这个数据好看','周末去哪玩']); b.say = {text:pickR(['好呀！','等我一下','哈哈对']), until:performance.now()+1800}}
+    await sleep(1800); if(!ok()) return bail();
+    a.bubble = null; if(!await backHome(id,ok)) return bail();
+  }
+  a.wander = false;
+}
+async function pairFoos(p,q){
+  const ids = [p,q], g = gensOf(ids), ok = () => alive(ids,g), bail = () => abortIdle(ids,g);
+  AG[p].wander = AG[q].wander = true;
+  setState(p,'away',`和 ${AG[q].name} 踢桌上足球`,'来一局！'); setState(q,'away',`和 ${AG[p].name} 踢桌上足球`,null);
+  await Promise.all([go(p,FOOS_L), go(q,FOOS_R)]); if(!ok()) return bail();
+  AG[p].bubble = AG[q].bubble = null; foos.on = true; AG[p].state = AG[q].state = 'working';
+  await sleep(2600); if(!ok()) return bail();
+  const win = Math.random()<0.5 ? p : q, lose = win===p ? q : p;
+  AG[win].say = {text:'进球！', until:performance.now()+1600, happy:true}; AG[win].jump = 0.6; pop(win,'★','#ffd166',2);
+  AG[lose].say = {text:'再来！', until:performance.now()+1600};
+  await sleep(1700); foos.on = false; if(!ok()) return bail();
+  const r = await Promise.all([backHome(p,ok), backHome(q,ok)]); if(!r[0] || !r[1]) return bail();
+  AG[p].wander = AG[q].wander = false;
+}
+async function pairShoot(){
+  const ids = ['mimi','bobo'], g = gensOf(ids), ok = () => alive(ids,g), bail = () => abortIdle(ids,g), m = AG.mimi, b = AG.bobo;
+  m.wander = b.wander = true;
+  setState('mimi','away','去摄影棚，Bobo 帮忙拍视频','拍一条！'); setState('bobo','away','给 Mimi 拍短视频',null);
+  await Promise.all([go('mimi',SHOOT), go('bobo',STATION.bobo)]); if(!ok()) return bail();
+  m.bubble = null; b.state = 'working'; b.bubble = 'Action！'; m.state = 'done';
+  await sleep(1400); if(!ok()) return bail();
+  b.bubble = null; m.jump = 0.6; m.say = {text:'大家好～', until:performance.now()+1600, happy:true};
+  await sleep(1800); if(!ok()) return bail();
+  b.say = {text:'完美，收工！', until:performance.now()+1500, happy:true};
+  await sleep(900); if(!ok()) return bail();
+  const r = await Promise.all([backHome('mimi',ok), backHome('bobo',ok)]); if(!r[0] || !r[1]) return bail();
+  m.wander = b.wander = false;
+}
+setInterval(() => {
+  if(busy) return;
+  const free = TEAM.filter(id=>!AG[id].wander && !AG[id].path.length && !held.has(id));
+  if(free.length >= 3 && Math.random() < 0.8){
+    const r = Math.random();
+    if(r<0.12 && free.length>=2){const p = pickR(free), q = pickR(free.filter(x=>x!==p)); pairFoos(p,q)}
+    else if(r<0.22 && free.includes('mimi') && free.includes('bobo')) pairShoot();
+    else {let id = pickR(free); if(id==='kiki' && Math.random()<0.6) id = pickR(free); wander(id)}
+  }
+  if(!held.has('wilson') && !AG.wilson.wander && !AG.wilson.path.length && Math.random() < 0.15) wander('wilson');
+}, 2300);
+
+
+/* ---------- direct tasks for one employee ---------- */
+const DIRECT = {
+  sasa:{tools:[['read_request','理解需求，列出要点'],['check_calendar','核对 Wilson 的日程'],['draft_doc','整理成文档并打印',1]], out:t=>`「${t}」已整理成文档，相关日程已排好`},
+  nana:{tools:[['pull_ads_data','拉取 Meta 广告数据'],['analyze','在大屏前分析受众与素材',1],['draft_plan','写出投放建议']], out:t=>`「${t}」：广告分析 + 投放建议已完成`},
+  mimi:{tools:[['research_trends','研究热门话题'],['write_captions','写文案与话题标签'],['shoot_story','在补光灯前拍素材',1]], out:t=>`「${t}」：文案 + 拍摄素材已备好`},
+  kiki:{tools:[['open_inbox','打开 WhatsApp 收件箱'],['draft_replies','按话术回复客户'],['tag_customers','标记客户与跟进事项']], out:t=>`「${t}」：已处理完，客户跟进事项已记录`},
+  lulu:{tools:[['moodboard','整理视觉方向'],['design','在画架上设计',1],['export','导出各平台尺寸']], out:t=>`「${t}」：设计稿 + 各平台尺寸已导出`},
+  bobo:{tools:[['shotlist','写分镜脚本'],['shoot','在摄影棚拍摄',1],['edit','剪辑加字幕']], out:t=>`「${t}」：成片已剪好，含字幕与 BGM`},
+  wawa:{tools:[['pull_orders','拉取订单与库存数据'],['check_issues','排查异常订单'],['update_board','更新流程看板',1]], out:t=>`「${t}」：已排查完成，结果更新在看板`},
+};
+const EXAMPLES = {
+  sasa:['安排下周三和供应商开会','整理本周各部门周报'],
+  nana:['看昨天广告数据，哪组素材最好','给新品加预算投放一组广告'],
+  mimi:['写 3 条下周的 IG 帖子文案','策划一条开箱 Reels'],
+  kiki:['回复今天所有未读的客户','给老客户群发新品通知'],
+  lulu:['设计双 12 促销海报','做一版圣诞主题 logo'],
+  bobo:['拍一条新品开箱短视频','把昨天直播剪成 3 条精华'],
+  wawa:['检查今天有没有延迟发货的订单','盘点一下仓库库存'],
+};
+const SENSITIVE = /(预算|花费|付款|采购|补货|群发|发布|上线|投放|推广|折|退款|合作|网红|对外|加钱|买)/;
+function needsApproval(t){
+  const rule = $('#aprule').value;
+  if(rule==='all') return true; if(rule==='none') return false;
+  if(t.auto) return !!t.au.ap;
+  return SENSITIVE.test(t.title);
+}
+
+/* ---------- workflow ---------- */
+async function doTool(id,sub,[tool,desc,st],t){
+  const a = AG[id], target = st && a.station ? a.station : a.home;
+  if(a.loc!==target){setState(id,'working',`${sub}：${st?'前往工作区':'回到工位'}`,null); await go(id,target)}
+  setState(id,'working',`${sub}：${desc}`,tool+'()'); emit(id,'tool_call',{tool});
+  if(st && id==='mimi') a.phone = true;
+  const dur = 1700+Math.random()*1200;
+  await sleep(dur*0.55); a.bubble = pickR(QUIP[id]); await sleep(dur*0.45);
+  a.phone = false;
+  emit(id,'tool_result',{tool, ok:true}); bump(t);
+}
+async function runDept(id,w,sc,t){
+  const a = AG[id];
+  for(let i=0;i<w.tools.length;i++){
+    for(const h of sc.handoffs.filter(h=>h.to===id && h.before===i)){
+      if(!h.done){if(a.loc!==a.home) await go(id,a.home); setState(id,'waiting',`等待 ${AG[h.from].name} 送来「${h.msg}」`,'等待…'); emit(id,'waiting',{for:h.from, need:h.msg}); await h.promise}
+    }
+    await doTool(id,w.sub,w.tools[i],t);
+    for(const h of sc.handoffs.filter(h=>h.from===id && h.after===i)) await handoff(h);
+  }
+  if(a.loc!==a.home){setState(id,'working',`${w.sub}：回到工位`,null); await go(id,a.home)}
+  a.done++; setState(id,'done',`${w.sub} 已完成`,'完成 ✓'); emit(id,'done',{subtask:w.sub}); addOut(t,id,w.out);
+}
+async function handoff(h){
+  const a = AG[h.from], b = AG[h.to];
+  setState(h.from,'handoff',`把「${h.msg}」送给 ${b.name}`,'送文件'); a.carry = true;
+  emit(h.from,'handoff',{to:h.to, payload:h.msg});
+  await go(h.from, b.visitPlace);
+  beam(a.pos,b.seat,a.color); a.carry = false;
+  b.say = {text:`收到「${h.msg}」`, until:performance.now()+1800/speed+600};
+  emit(h.to,'received',{from:h.from, payload:h.msg});
+  h.done = true; h.resolve();
+  await sleep(500);
+  setState(h.from,'handoff','送达，回到工位','');
+  await go(h.from, a.home);
+}
+// only one person presents to Wilson at a time
+let bossQ = Promise.resolve(), bossN = 0;
+function withBoss(fn){bossN++; const p = bossQ.then(fn).finally(()=>{bossN--}); bossQ = p.catch(()=>{}); return p}
+async function review(t,id,finalText,onRevise){
+  const a = AG[id];
+  while(true){
+    if(bossN>0) setState(id,'waiting','排队等 Wilson 有空审阅','等老板…');
+    const r = await withBoss(async () => {
+      hold('wilson'); await go('wilson',AG.wilson.home);
+      setPhase(3,`${a.name} 把成果送给 Wilson`,t);
+      setState(id,'handoff','把成果送给 Wilson','送审'); a.carry = true; emit(id,'handoff',{to:'wilson', payload:t.title});
+      await go(id,BOSS_VISIT);
+      a.carry = false; AG.wilson.reading = true;
+      emit('wilson','received',{from:id, payload:t.title});
+      setState('wilson','reviewing',`审阅 ${a.name} 的成果`,'review()'); setState(id,'waiting','等待 Wilson 审批','');
+      const r = await waitApproval(t);
+      AG.wilson.reading = false;
+      if(r==='ok'){
+        bump(t); AG.wilson.done++;
+        emit('wilson','approved',{task:t.title});
+        addOut(t,'wilson',finalText,true,'Wilson 已批准');
+        setPhase(5,'已完成，Wilson 已批准',t);
+        setState('wilson','done','已批准，辛苦了','干得漂亮！'); setState(id,'done','获得批准','Yay!');
+        a.jump = 0.6; setTimeout(()=>{AG.wilson.jump = 0.6},150);
+        await sleep(2200);
+      } else {
+        t.status = 'revising'; renderTasks(); emit('wilson','revise',{to:id, task:t.title});
+        setState('wilson','office','要求修改','这里再改改'); a.say = {text:'好的，马上改！', until:performance.now()+1600};
+        $('#mtag').innerHTML = `退回修改：<b>${esc(t.title)}</b>`;
+        await sleep(1200);
+      }
+      AG.wilson.bubble = null; setState('wilson','office','在办公室处理邮件',null); release('wilson');
+      return r;
+    });
+    if(r==='ok') return;
+    await onRevise();
+    t.status = 'running'; renderTasks();
+  }
+}
+async function runEmp(t){
+  const id = t.who, a = AG[id], short = t.title.length>24 ? t.title.slice(0,24)+'…' : t.title;
+  const tools = t.auto ? t.au.tools : DIRECT[id].tools, outText = t.auto ? t.au.out : DIRECT[id].out(short), sub = t.auto ? '⚡ '+t.au.n : '老板交代';
+  hold(id);
+  t.total = 2 + tools.length; t.prog = 0;
+  if(focus===t){setPhases(['老板下达',`${a.name} 接收`,'执行中',t.needAp?'送审':'汇报',t.needAp?'老板审批':'完成']); setBar(); $('#mtag').innerHTML = `Wilson → ${a.name}：<b>${esc(t.title)}</b>`}
+  if(t.auto){
+    pop(id,'⚡','#ffd166'); a.say = {text:'⚡ '+t.au.n, until:performance.now()+1800};
+    if(a.loc!==a.home){setState(id,'working',sub+'：回到工位',null); await go(id,a.home)}
+  } else {
+    setPhase(0,`Wilson 把任务交给 ${a.name}`,t);
+    emit('wilson','assign_task',{to:id, task:t.title}); beam(AG.wilson.pos, a.seat, '#ffd166');
+    if(!held.has('wilson')) AG.wilson.say = {text:`${a.name}，交给你了！`, until:performance.now()+1800};
+    setState(id,'routine','收到老板通知',null);
+    if(a.loc!==a.home) await go(id,a.home);
+    await sleep(1600);
+    setPhase(1,`${a.name} 接收任务`,t);
+    emit(id,'received',{from:'wilson', task:t.title}); a.say = {text:'收到，老板！', until:performance.now()+1500};
+    await sleep(800);
+  }
+  setState(id,'thinking', t.auto ? `${sub}：准备中` : '理解任务需求'); await sleep(1000); bump(t);
+  setPhase(2,`${a.name} 执行中`,t);
+  for(const tool of tools) await doTool(id,sub,tool,t);
+  if(a.loc!==a.home){setState(id,'working','回到工位',null); await go(id,a.home)}
+  a.done++; emit(id,'done',{task:t.title}); addOut(t,id,outText);
+  if(t.auto) a.autoDone = (a.autoDone||0)+1;
+  if(t.needAp){
+    await review(t,id,`${a.name}：${outText}`, async () => {
+      await go(id,a.home); setState(id,'working','根据 Wilson 的意见修改','revise()'); emit(id,'tool_call',{tool:'revise'});
+      await sleep(2400); emit(id,'tool_result',{tool:'revise', ok:true});
+    });
+    await go(id,a.home);
+  } else {
+    bump(t); addOut(t,id,`${outText}${t.auto?'':'（已汇报 Wilson）'}`,true, t.auto?'⚡ 自动完成':'已完成');
+    setState(id,'done', t.auto ? `⚡ 自动化完成：${t.au.n}` : '任务完成，已汇报 Wilson','完成 ✓');
+    setPhase(5, t.auto ? '自动完成' : `已完成：${a.name} 已汇报`, t);
+    if(!t.auto && !held.has('wilson')) setTimeout(()=>{AG.wilson.say = {text:`收到，辛苦了 ${a.name}！`, until:performance.now()+1800, happy:true}}, 600);
+    await sleep(1500);
+  }
+  setRoutine(id); release(id);
+}
+async function runTeam(t){
+  busy = true; ALL.forEach(hold); foos.on = false;
+  const sc = JSON.parse(JSON.stringify(t.sc));
+  sc.handoffs.forEach(h=>{h.done=false; h.promise=new Promise(r=>h.resolve=r)});
+  const ids = Object.keys(sc.work);
+  t.total = 3 + ids.reduce((n,id)=>n+sc.work[id].tools.length,0); t.prog = 0;
+  setPhases(['老板下达','启动会','部门执行','汇总',t.needAp?'老板审批':'完成'],t); setBar();
+  $('#mtag').innerHTML = `Wilson → 全公司：<b>${esc(sc.title)}</b>`;
+  TEAM.forEach(id=>setState(id,'routine','收到通知，回到工位',null)); setState('wilson','office','在办公室',null);
+  await Promise.all(ALL.map(id=>go(id,AG[id].home)));
+
+  setPhase(0,'Wilson 下达任务',t);
+  setState('wilson','working','撰写任务简报','brief()'); emit('wilson','assign_task',{to:'sasa', task:sc.title});
+  await sleep(1400);
+  setState('wilson','office','任务已交给 Sasa','Sasa，交给你了！'); beam(AG.wilson.pos, AG.sasa.seat, '#ffd166');
+  await sleep(1800);
+  emit('sasa','received',{from:'wilson'}); AG.sasa.say = {text:'收到，老板！', until:performance.now()+1500};
+  await sleep(900);
+  setState('wilson','office','等待团队交付',null);
+  setState('sasa','thinking','理解任务需求，拆解给各部门');
+  await sleep(1500);
+  emit('sasa','plan',{subtasks:ids.map(id=>`${id}:${sc.work[id].sub}`)}); bump(t);
+
+  setPhase(1,'HQ 启动会',t); hqTarget = 1;
+  TEAM.forEach(id=>setState(id,'meeting', id==='sasa'?'主持启动会':'前往 HQ 启动会', ''));
+  await Promise.all(TEAM.map(id=>go(id,AG[id].spotPlace)));
+  setState('sasa','meeting','分派子任务','分派任务'); emit('sasa','kickoff',{attendees:TEAM.length});
+  ids.forEach(id=>{setState(id,'meeting',`领取：${sc.work[id].sub}`,'收到'); emit(id,'assigned',{subtask:sc.work[id].sub}); beam(C,AG[id].seat,AG[id].color)});
+  await sleep(2200);
+  hqTarget = 0.15;
+
+  setPhase(2,'各部门并行执行',t);
+  TEAM.forEach(id=>setState(id,'meeting','返回工位',''));
+  await Promise.all(TEAM.map(id=>go(id,AG[id].home)));
+  setState('sasa','working','跟进各部门进度','track()');
+  const watch = (async()=>{
+    await sleep(3000); setState('wilson','office','去大屏前看进度',null); await go('wilson',BOSS_TV);
+    AG.wilson.bubble = '进度不错'; await sleep(2600); AG.wilson.bubble = null;
+    await go('wilson',AG.wilson.home); setState('wilson','office','等待团队交付',null);
+  })();
+  await Promise.all(ids.map(id=>runDept(id,sc.work[id],sc,t)));
+  await watch;
+
+  setPhase(3,'Sasa 汇总成方案',t); hqTarget = 1;
+  TEAM.forEach(id=>setState(id, id==='sasa'?'thinking':'meeting', id==='sasa'?'汇总各部门产出':'带着产出回到 HQ', ''));
+  await Promise.all(TEAM.map(id=>go(id,AG[id].spotPlace)));
+  setState('sasa','working','合并成最终方案','merge()'); emit('sasa','tool_call',{tool:'merge_outputs'});
+  await sleep(2200); bump(t); hqTarget = 0.4;
+
+  if(t.needAp){
+    TEAM.filter(x=>x!=='sasa').forEach(id=>setState(id,'waiting','等待老板批准','等待…'));
+    await review(t,'sasa',sc.final, async () => {
+      setState('sasa','working','带回 HQ 和团队一起修改',null); await go('sasa',AG.sasa.spotPlace);
+      setState('sasa','working','根据 Wilson 的意见修改','revise()'); emit('sasa','tool_call',{tool:'revise_plan'});
+      await sleep(2600); emit('sasa','tool_result',{tool:'revise_plan', ok:true});
+    });
+    hold('wilson');
+  } else {
+    bump(t); addOut(t,'sasa',sc.final,true,'已完成（无需审批）');
+    emit('sasa','mission_complete',{deliverable:sc.final}); celebrate('MISSION COMPLETE','任务完成 · 已汇报 Wilson');
+    setPhase(5,'已完成（无需审批）',t);
+  }
+  TEAM.forEach(id=>setState(id,'done', id==='sasa'?'方案完成':'本轮协作完成','Yay!'));
+  ALL.forEach((id,i)=>setTimeout(()=>{AG[id].jump=0.6},i*110));
+  await sleep(2800);
+  hqTarget = 0.15;
+  ALL.forEach(id=>setState(id,'done',AG[id].action,''));
+  await Promise.all(TEAM.map(id=>go(id,AG[id].home)));
+  TEAM.forEach(id=>setRoutine(id));
+  setState('wilson','office','在办公室处理邮件',null);
+  $('#mtag').innerHTML = `上一个任务：<b>${esc(sc.title)}</b> · 已完成`;
+  ALL.forEach(release); busy = false;
+}
+
+/* ---------- scheduler: tasks run in parallel per employee ---------- */
+function newTask(o){const t = Object.assign({id:++tid, status:'queued', created:hm(), prog:0, total:1, outs:[]}, o); t.needAp = needsApproval(t); return t}
+function addTask(t){
+  tasks.unshift(t);
+  for(let i=tasks.length-1; tasks.length>120 && i>=0; i--) if(tasks[i].status==='done') tasks.splice(i,1);
+  renderTasks(); updateQueue(); pump();
+}
+function submit(text,who){
+  const t = newTask({title:text, who});
+  if(who==='all') t.sc = SCN.find(s=>s.title===text) || customScenario(text);
+  emit('wilson','task_created',{to:who==='all'?'team':who, task:text, needs_approval:t.needAp});
+  addTask(t);
+}
+function submitAuto(id,u){
+  if(tasks.some(t=>t.au===u && t.status!=='done')) return false;
+  u.runs++; renderCard(id);
+  emit(id,'automation_trigger',{automation:u.n, schedule:u.cad});
+  addTask(newTask({title:u.n, who:id, auto:true, au:u}));
+  return true;
+}
+function pump(){
+  if(teamRunning) return;
+  const q = tasks.filter(t=>t.status==='queued').sort((x,y)=>(!!x.auto-!!y.auto) || (x.id-y.id));
+  for(const t of q){
+    if(t.who==='all'){if(running.size===0) start(t); break}
+    if([...running].some(r=>r.who===t.who)) continue;
+    start(t);
+  }
+}
+function start(t){
+  running.add(t); t.status = 'running'; if(!t.auto){focus = t; setBar()}
+  if(t.who==='all') teamRunning = true;
+  renderTasks(); updateQueue();
+  (t.who==='all' ? runTeam(t) : runEmp(t)).then(() => {
+    t.status = 'done'; t.finished = hm(); t.prog = t.total; running.delete(t);
+    if(t.who==='all') teamRunning = false;
+    if(focus===t) setBar();
+    renderTasks(); updateQueue(); if(t.who!=='all') renderCard(t.who);
+    setTimeout(pump, 300);
+  });
+}
+function seedAutos(){
+  const first = {kiki:5, wawa:12, nana:20, mimi:28, lulu:38, bobo:50, sasa:62};
+  Object.entries(AUTOS).forEach(([id,list]) => list.forEach((u,i) => {u.next = simT + first[id] + i*u.ev*0.45 + Math.random()*8}));
+}
+setInterval(() => {
+  Object.entries(AUTOS).forEach(([id,list]) => list.forEach(u => {
+    if(!u.on || simT < u.next) return;
+    u.next = simT + u.ev*(0.85+Math.random()*0.3);
+    submitAuto(id,u);
+  }));
+}, 1000);
+
+/* ---------- role sheet dialog ---------- */
+const dlg = $('#roleDlg');
+const li = arr => arr.map(x=>`<li>${esc(x)}</li>`).join('');
+function openRole(id){
+  const a = AG[id], r = ROLES[id];
+  $('#rdBody').innerHTML = `
+    <div class="rdh" style="--c:${a.color}">${PET_SVG}<div><h3 id="rdTitle">${a.name} · ${esc(a.dept)} · ${esc(a.cn)}</h3><p>${esc(r.title)}</p></div><button type="button" class="x" aria-label="关闭">✕</button></div>
+    <div class="rdg">
+      <section><h4>核心职责</h4><ul>${li(r.duty)}</ul></section>
+      <section><h4>日常任务</h4><ul>${li(r.daily)}</ul></section>
+      <section><h4>交付物</h4><p>${esc(r.deliver)}</p><h4>KPI</h4><p>${esc(r.kpi)}</p></section>
+      <section><h4>必须 Wilson 批准</h4><ul>${li(r.approve)}</ul><h4>交接</h4><p>${esc(r.hand)}</p></section>
+    </div>
+    <div><h4>⚡ 自动化 · 到时间自动执行，结果记在「任务记录」</h4>
+    <div class="autos">${AUTOS[id].map((u,i)=>`<div class="au"><label class="sw"><input type="checkbox" data-i="${i}" ${u.on?'checked':''} aria-label="开启自动化：${esc(u.n)}"><span></span></label><div><b>${esc(u.n)}</b><small>${esc(u.cad)} · ${u.ap?'完成后需你批准':'自动完成，不用批准'} · 已运行 ${u.runs} 次</small></div><button type="button" data-run="${i}">立即运行</button></div>`).join('')}</div></div>
+    <div class="rdf"><button type="button" class="go" data-assign="1">派任务给 ${a.name}</button></div>`;
+  $('#rdBody').onclick = e => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.classList.contains('x')) dlg.close();
+    else if(b.dataset.assign){dlg.close(); assignTo(id)}
+    else if(b.dataset.run){const u = AUTOS[id][+b.dataset.run]; b.textContent = submitAuto(id,u) ? '已触发 ✓' : '正在跑'; setTimeout(()=>{if(dlg.open) openRole(id)}, 900)}
+  };
+  $('#rdBody').onchange = e => {const c = e.target; if(c.dataset.i!=null){AUTOS[id][+c.dataset.i].on = c.checked; renderCard(id)}};
+  if(!dlg.open) dlg.showModal();
+}
+dlg.addEventListener('click', e => {if(e.target===dlg) dlg.close()});
+
+/* ---------- controls ---------- */
+const taskEl = $('#task'), goEl = $('#go'), preEl = $('#presets'), whoEl = $('#who');
+let assignee = 'all';
+function renderWho(){
+  whoEl.innerHTML = [['all','全公司','#ffd166'], ...TEAM.map(id=>[id,`${AG[id].name} · ${AG[id].cn}`,AG[id].color])]
+    .map(([id,lab,c])=>`<button type="button" data-who="${id}" style="--c:${c}" aria-pressed="${id===assignee}"><i></i>${lab}</button>`).join('');
+}
+whoEl.addEventListener('click', e => {const b = e.target.closest('button'); if(b) selectWho(b.dataset.who)});
+function selectWho(id){
+  assignee = id; renderWho(); renderPresets();
+  $('#tasklb').textContent = id==='all' ? '② Wilson，今天想让团队做什么？' : `② Wilson，要 ${AG[id].name}（${AG[id].dept} · ${AG[id].cn}）做什么？`;
+  taskEl.placeholder = id==='all' ? '例如：下个月办一场会员答谢直播' : `例如：${EXAMPLES[id][0]}`;
+}
+function assignTo(id){selectWho(id); taskEl.scrollIntoView({behavior:'smooth', block:'center'}); taskEl.focus({preventScroll:true})}
+function renderPresets(){
+  preEl.innerHTML = '';
+  const list = assignee==='all' ? SCN.map(s=>[s.chip,s.title]) : EXAMPLES[assignee].map(x=>[x,x]);
+  list.forEach(([lab,val]) => {const b = document.createElement('button'); b.type = 'button'; b.textContent = lab; b.addEventListener('click',()=>{taskEl.value = val; taskEl.focus()}); preEl.appendChild(b)});
+}
+function parseAt(v){
+  const m = v.match(/^[@＠]\s*([^\s:：,，]+)[\s:：,，]*([\s\S]*)$/);
+  if(!m) return null;
+  const key = m[1].toLowerCase();
+  const id = TEAM.find(x => AG[x].name.toLowerCase()===key || AG[x].cn===m[1] || x===key);
+  return id ? {who:id, text:m[2].trim() || v} : null;
+}
+goEl.addEventListener('click',()=>{
+  const v = taskEl.value.trim(); if(!v){taskEl.focus(); return}
+  const at = parseAt(v);
+  submit(at ? at.text : v, at ? at.who : assignee);
+  taskEl.value = '';
+});
+taskEl.addEventListener('keydown', e => {if(e.key==='Enter' && (e.ctrlKey || e.metaKey)){e.preventDefault(); goEl.click()}});
+$('#approve').addEventListener('click',()=>decide(true));
+$('#revise').addEventListener('click',()=>decide(false));
+document.querySelectorAll('[data-sp]').forEach(b=>b.addEventListener('click',()=>{
+  speed = +b.dataset.sp; document.querySelectorAll('[data-sp]').forEach(x=>x.setAttribute('aria-pressed', x===b?'true':'false'));
+}));
+document.querySelectorAll('[data-tod]').forEach(b=>b.addEventListener('click',()=>{
+  todMode = b.dataset.tod; document.querySelectorAll('[data-tod]').forEach(x=>x.setAttribute('aria-pressed', x===b?'true':'false'));
+  $('#clock').textContent = clockText();
+}));
+function toWorld(e){const r = cv.getBoundingClientRect(); return [(e.clientX-r.left-W/2-cam.x)/zoom+W/2, (e.clientY-r.top-H/2-cam.y)/zoom+H/2]}
+function hit(e){
+  const [x,y] = toWorld(e);
+  return ALL.find(id=>{const a=AG[id], [px,py]=P(a.pos.x,a.pos.y,a.z); return Math.hypot(px-x,py-TW*0.5*PS*0.9-y) < TW*0.6*PS});
+}
+function hitBot(e){const [x,y] = toWorld(e), [px,py] = P(bot.pos.x,bot.pos.y,0.1); return Math.hypot(px-x,(py-y)*1.6) < TW*0.45}
+cv.addEventListener('click',e=>{const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x:e.clientX-r.left,y:e.clientY-r.top}; cv.style.cursor = (hit(e)||hitBot(e))?'pointer':'default'});
+cv.addEventListener('mouseleave',()=>{mouse=null});
+
+ALL.forEach(id=>{renderCard(id); renderSpark(id)}); renderOV();
+renderWho(); renderPresets(); renderTasks(); updateQueue();
+emit('wilson','office_open',{team:TEAM});
+buildFurniture();
+resize();
+new ResizeObserver(()=>resize()).observe(stage);
+if(document.fonts) document.fonts.ready.then(()=>renderAllBG());
+requestAnimationFrame(frame);
+seedAutos();
+})();
+</script>
