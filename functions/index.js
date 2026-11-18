@@ -24,7 +24,7 @@ const db = getFirestore();
 /* ---------- Claude ---------- */
 let client = null;
 function claude() {
-  if (!client) client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+  if (!client) client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value().trim() });
   return client;
 }
 async function ask(system, user, effort = "medium") {
