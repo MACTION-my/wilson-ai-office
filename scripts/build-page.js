@@ -42,7 +42,6 @@ rep('<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody">
   <div class="toast" id="toast" hidden role="status"></div>
   <div class="gate" id="gate"><div class="gcard"><h2>Wilson 的 AI 办公室</h2><p id="gmsg">正在连接…</p><button type="button" class="go" id="gbtn" hidden></button><p class="tip" id="gnote"></p></div></div>`);
 rep("<script>\n(() => {", '<script src="org.js"></script>\n<script>\n(() => {');
-s = s.trimEnd() + '\n<script type="module" src="app.js"></script>\n';
 
 /* ---- CSS ---- */
 rep("dialog#roleDlg{", "dialog#roleDlg,dialog.dlg{");
@@ -82,5 +81,6 @@ cut("const logEl = $('#log'); let evCount = 0;", "$('#evn').textContent = (++evC
 cut("/* ---------- roles & automations ---------- */", null,
   src("scripts/page-src/live-mid.js") + "\n" + src("scripts/page-src/idle.js") + src("scripts/page-src/live-work.js"));
 
+s = s.trimEnd() + '\n<script type="module" src="app.js"></script>\n';
 fs.writeFileSync(path.join(root, "public", "index.html"), s);
 console.log("public/index.html written", s.length, "chars");
