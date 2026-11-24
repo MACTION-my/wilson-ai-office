@@ -50,7 +50,7 @@ async function visReview(t,id){
   }
 }
 async function visEmp(t){
-  const id = t.who, a = AG[id], sub = t.auto ? '⚡ '+t.title : '老板交代';
+  const id = t.who, a = AG[id], sub = t.auto ? '自动化 · '+t.title : '老板交代';
   await acquire([id]); hold(id);
   try{
     if(t.auto){pop(id,'⚡','#ffd166'); a.say = {text:'⚡ '+t.title, until:performance.now()+1800}}
@@ -78,7 +78,7 @@ async function visEmp(t){
     if(t.status==='failed'){setState(id,'waiting','出错了：'+(t.error||''),'出错了…'); await rsleep(3000)}
     else if(t.status==='review') await visReview(t,id);
     else {
-      vfx(id,'done'); setState(id,'done', t.auto ? `⚡ 自动化完成：${t.title}` : '任务完成，已汇报 Wilson','完成 ✓');
+      vfx(id,'done'); setState(id,'done', t.auto ? `自动化完成：${t.title}` : '任务完成，已汇报 Wilson','完成 ✓');
       if(!t.auto && !held.has('wilson')) setTimeout(()=>{AG.wilson.say = {text:`收到，辛苦了 ${a.name}！`, until:performance.now()+1800, happy:true}}, 600);
       await rsleep(1600);
     }
@@ -222,7 +222,7 @@ function openRole(id){
       <section><h4>交付物</h4><p>${esc(r.deliver||'')}</p><h4>KPI</h4><p>${esc(r.kpi||'')}</p></section>
       <section><h4>必须 Wilson 批准</h4><ul>${li(r.approve)}</ul><h4>交接</h4><p>${esc(r.hand||'')}</p></section>
     </div>
-    <div><h4>⚡ 自动化 · 到时间由 AI 自动执行，结果记在「任务记录」</h4>
+    <div><h4>自动化 · 到时间由 AI 自动执行，结果记在「任务记录」</h4>
     <div class="autos">${AUTOS[id].map(u=>`<div class="au"><label class="sw"><input type="checkbox" data-key="${u.key}" ${u.on?'checked':''} ${session.isOwner?'':'disabled'} aria-label="开启自动化：${esc(u.n)}"><span></span></label><div><b>${esc(u.n)}</b><small>${esc(u.cad)} · ${u.ap?'完成后需你批准':'自动完成，不用批准'} · 已运行 ${u.runs} 次${u.needs?` · <span class="need">需先接入 ${esc(u.needs)}，现在只出草稿</span>`:''}</small></div>${session.isOwner?`<button type="button" data-run="${u.key}">立即运行</button>`:''}</div>`).join('')}</div></div>
     <div class="rdf"><button type="button" class="go" data-assign="1">派任务给 ${a.name}</button></div>`;
   $('#rdBody').onclick = async e => {
@@ -247,7 +247,7 @@ function renderWho(){
 whoEl.addEventListener('click', e => {const b = e.target.closest('button'); if(b) selectWho(b.dataset.who)});
 function selectWho(id){
   assignee = id; renderWho(); renderPresets();
-  $('#tasklb').textContent = id==='all' ? '② Wilson，今天想让团队做什么？' : `② Wilson，要 ${AG[id].name}（${AG[id].dept} · ${AG[id].cn}）做什么？`;
+  $('#tasklb').textContent = id==='all' ? 'Wilson，今天想让团队做什么？' : `Wilson，要 ${AG[id].name}（${AG[id].dept} · ${AG[id].cn}）做什么？`;
   taskEl.placeholder = id==='all' ? '例如：下个月办一场会员答谢直播' : `例如：${EXAMPLES[id][0]}`;
 }
 function assignTo(id){selectWho(id); taskEl.scrollIntoView({behavior:'smooth', block:'center'}); taskEl.focus({preventScroll:true})}

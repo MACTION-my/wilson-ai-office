@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wilson's AI Office</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -174,27 +176,160 @@ dialog#roleDlg::backdrop{background:rgba(4,3,14,.72);backdrop-filter:blur(3px)}
 pre.code{margin:0;overflow-x:auto;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:12.5px/1.6 var(--f-mono);color:#cdd0ff}
 pre.code .c{color:#7d79a8}
 @media (prefers-reduced-motion:reduce){.ev,.out{animation:none}.bar i,.spark span{transition:none}}
+
+/* ===== v2 visual refresh: calm Swiss-style chrome around the immersive office scene =====
+   Type scale 12 / 13 / 14 / 15 / 17 / 22 / 28. Purple = actions, pink = energy, gold = the boss and approvals only. */
+:root{
+  --bg:#080a1f; --bg2:#0b0d26;
+  --panel:linear-gradient(180deg,rgba(26,27,64,.94),rgba(17,18,46,.94));
+  --line:rgba(165,160,255,.14); --line-strong:rgba(175,165,255,.3);
+  --fg:#f2f1ff; --muted:#aeacd8; --dim:#8987b6;
+  --primary:#7c3aed; --primary-soft:rgba(139,92,246,.18); --primary-ring:rgba(167,139,250,.55);
+  --accent:#db2777; --ok:#34d399; --warn:#fbbf24; --gold:#ffd166; --danger:#f87171;
+  --r-md:12px; --r-lg:16px;
+  --shadow:0 1px 0 rgba(255,255,255,.05) inset,0 16px 40px -24px rgba(0,0,0,.8);
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+html{background:var(--bg)}
+body{font-size:14px;line-height:1.55;min-height:100vh;background:
+  radial-gradient(1100px 520px at 78% -12%,rgba(124,58,237,.20),transparent 62%),
+  radial-gradient(800px 420px at -5% 0%,rgba(219,39,119,.09),transparent 60%),var(--bg)}
+:focus-visible{outline:2px solid #c4b5fd;outline-offset:2px}
+.app{gap:20px;padding-block:20px 48px}
+.grid{grid-template-rows:auto 1fr;gap:18px}
+.depts{align-self:start}
+
+/* header */
+header.top{align-items:center;padding-bottom:4px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none;background:linear-gradient(135deg,var(--primary),var(--accent));box-shadow:0 8px 22px -10px rgba(219,39,119,.7)}
+.logo svg{width:26px;height:26px}
+.brand .k{font:500 12px var(--f-mono);letter-spacing:.14em;color:var(--muted)}
+.brand h1{font:700 26px/1.2 var(--f-display);letter-spacing:-.015em}
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:13px;padding:6px 12px;background:rgba(255,255,255,.03);color:var(--muted)}
+.chip b{color:var(--fg)}
+#conn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+.cbtn{min-height:34px;transition:border-color .2s,background .2s}
+.cbtn:hover{border-color:var(--line-strong);background:rgba(255,255,255,.06)}
+
+/* stage */
+.stage{border-radius:20px;border-color:var(--line);box-shadow:0 40px 90px -50px rgba(124,58,237,.55),var(--shadow)}
+.stagebar{position:absolute;top:12px;right:12px;display:flex;gap:8px;z-index:2}
+.stagebar .seg{background:rgba(8,10,31,.74);backdrop-filter:blur(8px);border-color:var(--line-strong)}
+.seg button{font:500 12px var(--f-body);padding:6px 11px;min-height:30px;transition:background .2s,color .2s}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--primary-soft);color:#e4dbff}
+.mtag{right:auto;max-width:calc(100% - 360px)}
+.mtag span,.clock{background:rgba(8,10,31,.74);border-color:var(--line-strong);font-size:12.5px;padding:5px 11px}
+.hint{font-size:12px}
+@media (max-width:760px){
+  .stagebar{top:auto;bottom:10px;right:8px}
+  .stagebar .seg.sp,.clock{display:none}
+  .mtag{max-width:calc(100% - 24px)}
+}
+
+/* panels */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow)}
+.ph{align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ph h2{font:600 15px/1.3 var(--f-display);letter-spacing:.01em;text-transform:none}
+.ph .sub{font-size:12px;color:var(--muted)}
+.boss{border-radius:var(--r-md);padding:12px 14px;border-color:rgba(255,209,102,.32);background:linear-gradient(135deg,rgba(255,209,102,.09),rgba(255,209,102,.02))}
+.boss .dname{font-size:17px}
+.boss .dact{font-size:12.5px}
+
+/* command desk */
+.step-lb{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--fg);margin:16px 0 8px}
+.step-lb label{margin:0;cursor:pointer}
+.step-lb .n{width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;font:700 12px var(--f-mono);color:#e4dbff;background:var(--primary-soft);border:1px solid rgba(167,139,250,.45)}
+.who{gap:6px;margin-bottom:4px}
+.who button{font-size:13px;padding:6px 11px;min-height:32px;transition:border-color .2s,background .2s}
+.who button:hover{border-color:var(--line-strong)}
+.who button[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 18%,transparent);border-color:var(--c);color:#fff}
+textarea#task{min-height:92px;font-size:15px;line-height:1.55;border-radius:var(--r-md);padding:12px 14px;background:rgba(5,6,20,.55);border-color:var(--line-strong);transition:border-color .2s,box-shadow .2s}
+textarea#task:focus{outline:none;border-color:#a78bfa;box-shadow:0 0 0 3px rgba(139,92,246,.28)}
+textarea#task::placeholder{color:var(--dim)}
+.presets{margin:10px 0 14px}
+.presets button{font-size:12.5px;padding:6px 12px;min-height:30px;color:var(--muted);transition:color .2s,border-color .2s}
+.presets button:hover{color:var(--fg);border-color:rgba(167,139,250,.6)}
+.rule{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rule label{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.rule select{margin:0!important;flex:1;min-width:0}
+select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba(5,6,20,.55);border-color:var(--line-strong)}
+.go{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;border-radius:var(--r-md);font:600 15px var(--f-body);color:#fff;
+  background:linear-gradient(135deg,var(--primary),var(--accent));box-shadow:0 12px 26px -14px rgba(219,39,119,.75);transition:transform .2s var(--ease),box-shadow .2s,filter .2s}
+.go svg{width:18px;height:18px}
+.go:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.07);box-shadow:0 16px 30px -14px rgba(219,39,119,.85)}
+.go:active:not(:disabled){transform:translateY(0) scale(.99)}
+.tip{font-size:12.5px;color:var(--muted);margin-top:10px}
+.review{margin:0 0 4px;border-radius:var(--r-md);padding:14px;background:linear-gradient(135deg,rgba(255,209,102,.14),rgba(255,209,102,.04))}
+.review b{font-size:14px}
+.review b::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-right:8px;vertical-align:1px;box-shadow:0 0 0 3px rgba(255,209,102,.2)}
+.review span{display:block;font-size:13.5px;margin-top:4px}
+.rvb{flex-wrap:wrap}
+.rvb button{min-height:40px;font-size:13.5px;border-radius:10px;transition:filter .2s,border-color .2s}
+.rvb button:hover{border-color:var(--line-strong)}
+.rvb button.ap{background:var(--ok);border-color:var(--ok);color:#052e20}
+.rvb button.ap:hover{filter:brightness(1.08)}
+.phases{gap:6px;margin-top:16px}
+.phases span{font-size:12px;padding:6px 0;border-radius:8px;overflow:hidden;text-overflow:ellipsis}
+.phases span.on{background:var(--primary-soft);color:#e4dbff}
+.phases span.ok{color:var(--ok);background:rgba(52,211,153,.08)}
+.bar{height:6px}
+.bar i{background:linear-gradient(90deg,#8b5cf6,var(--accent))}
+.prow{font-size:12.5px}
+
+/* task records + event stream */
+.tf{gap:6px}
+.tf button{font-size:12.5px;padding:5px 12px;min-height:30px;transition:color .2s,border-color .2s}
+.tf button[aria-pressed="true"]{color:#e4dbff;border-color:rgba(167,139,250,.6);background:var(--primary-soft)}
+.task{background:rgba(255,255,255,.025);border-radius:var(--r-md);padding:12px 14px;gap:8px;transition:border-color .2s,background .2s}
+.task:hover{background:rgba(255,255,255,.04)}
+.tw{font-size:12.5px}
+.tt{font-size:14px;font-weight:500}
+.tm,.tag{font-size:12px}
+.task summary{font-size:12.5px}
+.log{font-size:12px}
+.out{font-size:13.5px}
+
+/* department cards */
+.depts{gap:14px}
+.dept{position:relative;overflow:hidden;border-radius:var(--r-lg);padding:16px;gap:12px;background:var(--panel);box-shadow:var(--shadow);transition:border-color .2s,transform .25s var(--ease),box-shadow .25s}
+.dept::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--c);opacity:.9}
+.dept:hover,.dept.hl{transform:translateY(-2px);box-shadow:0 22px 40px -26px var(--c),var(--shadow)}
+.dname{font-size:17px}
+.ddept{font-size:12px}
+.pill{font-size:12px;padding:3px 9px}
+.dact{font-size:13px;min-height:40px;color:#dcdaf5}
+.kpis span{font-size:12px}
+.kpis b{font-size:18px}
+.auto{display:flex;align-items:center;gap:6px;font-size:12.5px}
+.ico{width:14px;height:14px;color:var(--gold);flex:none}
+.dbtns{gap:8px}
+.dbtn{min-height:34px;padding:5px 12px;font-size:12.5px;border-radius:10px;background:color-mix(in srgb,var(--c) 14%,transparent);transition:background .2s}
+.dbtn:hover{background:color-mix(in srgb,var(--c) 24%,transparent)}
+.dbtn.ghost{background:transparent;border-color:var(--line-strong)}
+.dbtn.ghost:hover{background:rgba(255,255,255,.06)}
+
+/* how / dialogs */
+.how h2{font-size:17px}
+.step h3{font-size:14px}
+.step p{font-size:13px}
+
+@media (pointer:coarse){.who button,.presets button,.tf button,.dbtn,.seg button,.cbtn{min-height:40px}}
+@media (prefers-reduced-motion:reduce){.dept,.go,.dept:hover,.go:hover{transition:none;transform:none}}
 </style>
 
 <div class="app">
   <header class="top">
     <div class="brand">
-      <div class="k">Wilson &amp; Co. · AI Office</div>
-      <h1><em>Wilson</em> 的 AI 办公室</h1>
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 9 L11 23 L16 13 L21 23 L26 9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div>
+        <div class="k">Wilson &amp; Co. · AI Office</div>
+        <h1><em>Wilson</em> 的 AI 办公室</h1>
+      </div>
     </div>
     <div class="tools">
       <span class="chip">演示模式 · <b>模拟事件与示例数据</b></span>
-      <div class="seg" role="group" aria-label="时间">
-        <button data-tod="auto" aria-pressed="true">自动昼夜</button>
-        <button data-tod="day" aria-pressed="false">白天</button>
-        <button data-tod="dusk" aria-pressed="false">黄昏</button>
-        <button data-tod="night" aria-pressed="false">夜晚</button>
-      </div>
-      <div class="seg" role="group" aria-label="播放速度">
-        <button data-sp="1" aria-pressed="true">1×</button>
-        <button data-sp="2" aria-pressed="false">2×</button>
-        <button data-sp="4" aria-pressed="false">4×</button>
-      </div>
     </div>
   </header>
 
@@ -202,6 +337,19 @@ pre.code .c{color:#7d79a8}
     <section class="stage" id="stage">
       <canvas id="cv" aria-label="等距视角的 AI 办公室：Wilson 的角落办公室，以及 PA、Meta 广告、社媒内容、WhatsApp 客服、视频、设计、运营七个部门"></canvas>
       <div class="mtag"><span id="mtag">当前任务：<b>日常运营中</b></span></div>
+      <div class="stagebar">
+        <div class="seg" role="group" aria-label="时间">
+          <button data-tod="auto" aria-pressed="true">自动昼夜</button>
+          <button data-tod="day" aria-pressed="false">白天</button>
+          <button data-tod="dusk" aria-pressed="false">黄昏</button>
+          <button data-tod="night" aria-pressed="false">夜晚</button>
+        </div>
+        <div class="seg sp" role="group" aria-label="播放速度">
+          <button data-sp="1" aria-pressed="true">1×</button>
+          <button data-sp="2" aria-pressed="false">2×</button>
+          <button data-sp="4" aria-pressed="false">4×</button>
+        </div>
+      </div>
       <div class="clock" id="clock">15:00 · 白天</div>
       <div class="hint">点小宠打招呼 · 扫地机器人也能点</div>
     </section>
@@ -214,30 +362,30 @@ pre.code .c{color:#7d79a8}
           <div><div class="dname">Wilson<small>CEO</small></div><div class="dact"></div></div>
           <span class="pill"></span>
         </div>
-        <div class="lb2">① 派给谁？</div>
-        <div class="who" id="who" role="group" aria-label="派给谁"></div>
-        <label class="lb" for="task" id="tasklb">② Wilson，今天想让团队做什么？</label>
-        <textarea id="task" placeholder="例如：下个月办一场会员答谢直播"></textarea>
-        <div class="presets" id="presets"></div>
-        <label class="lb2" for="aprule">审批规则</label>
-        <select id="aprule">
-          <option value="smart">只有花钱、对外发布、群发才要我批准（推荐）</option>
-          <option value="all">所有任务都要我批准</option>
-          <option value="none">全部直接完成，不用批准</option>
-        </select>
-        <button class="go" id="go">③ 派出任务</button>
-        <p class="tip">派给「全公司」：Sasa 拆给各部门一起做。点名某位员工：直接交给 TA，可以同时派给好几个人。也可以直接输入 <code>@Kiki 回复今天的客户</code>。每个部门还有 ⚡ 自动化，到时间会自己开工。</p>
         <div class="review" id="review" hidden>
           <b>④ 待你审批</b><span id="rvTitle"></span>
           <div class="rvb"><button type="button" class="ap" id="approve">批准 ✓</button><button type="button" id="revise">退回修改</button></div>
         </div>
+        <div class="step-lb"><span class="n">1</span>派给谁</div>
+        <div class="who" id="who" role="group" aria-label="派给谁"></div>
+        <div class="step-lb"><span class="n">2</span><label for="task" id="tasklb">Wilson，今天想让团队做什么？</label></div>
+        <textarea id="task" placeholder="例如：下个月办一场会员答谢直播"></textarea>
+        <div class="presets" id="presets"></div>
+        <div class="rule"><label for="aprule">审批规则</label>
+        <select id="aprule">
+          <option value="smart">只有花钱、对外发布、群发才要我批准（推荐）</option>
+          <option value="all">所有任务都要我批准</option>
+          <option value="none">全部直接完成，不用批准</option>
+        </select></div>
+        <button class="go" id="go"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10 L17 3 L12 17 L10 11 Z" fill="currentColor"/></svg>派出任务</button>
+        <p class="tip">派给「全公司」：Sasa 拆给各部门一起做。点名某位员工：直接交给 TA，可以同时派给好几个人。也可以直接输入 <code>@Kiki 回复今天的客户</code>。</p>
         <div class="phases" id="phases"><span>老板下达</span><span>启动会</span><span>部门执行</span><span>汇总</span><span>老板审批</span></div>
         <div class="bar"><i id="bar"></i></div>
         <div class="prow"><span id="ptxt">等待 Wilson 下达任务</span><span id="pnum">0%</span></div>
       </section>
       <section class="panel">
         <div class="ph"><h2>任务记录</h2><span class="sub" id="tcount">0 个</span></div>
-        <div class="tf" id="tf" role="group" aria-label="筛选任务"><button type="button" data-f="all" aria-pressed="true">全部</button><button type="button" data-f="me" aria-pressed="false">我派的</button><button type="button" data-f="auto" aria-pressed="false">⚡ 自动化</button><button type="button" data-f="review" aria-pressed="false">待审批</button></div>
+        <div class="tf" id="tf" role="group" aria-label="筛选任务"><button type="button" data-f="all" aria-pressed="true">全部</button><button type="button" data-f="me" aria-pressed="false">我派的</button><button type="button" data-f="auto" aria-pressed="false">自动化</button><button type="button" data-f="review" aria-pressed="false">待审批</button></div>
         <div class="tasks" id="tasks"></div>
       </section>
       <section class="panel">
@@ -1451,7 +1599,7 @@ TEAM.forEach(id => {
     <div class="dact"></div>
     <div class="kpis">${KPI[id].map((k,i)=>`<div><span>${k.l}</span><b data-k="${i}">${fmt(k)}</b></div>`).join('')}<div><span>完成子任务</span><b class="cnt">0</b></div></div>
     <div class="spark" aria-hidden="true">${'<span></span>'.repeat(18)}</div>
-    <div class="auto">⚡ <span class="an"></span> · 已自动完成 <b class="ac">0</b> 次</div>
+    <div class="auto"><svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 L3 9 H8 L7 15 L13 7 H8 Z" fill="currentColor"/></svg><span class="an"></span> · 已自动完成 <b class="ac">0</b> 次</div>
     <div class="dbtns"><button type="button" class="dbtn" data-act="assign">派任务给 ${a.name}</button><button type="button" class="dbtn ghost" data-act="role">岗位与自动化</button></div>`;
   bindHover(el,id);
   el.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', e => {e.stopPropagation(); b.dataset.act==='role' ? openRole(id) : assignTo(id)}));

@@ -12,7 +12,7 @@ let focus = null, tFilter = 'all', session = {isOwner:false, name:''}, rule = 's
 const tsMs = v => v && typeof v.toMillis === 'function' ? v.toMillis() : 0;
 const hmOf = ms => {if(!ms) return ''; const d = new Date(ms); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
 const isToday = ms => ms && new Date(ms).toDateString() === new Date().toDateString();
-const whoName = t => t.auto ? `⚡ 自动化 · ${AG[t.who].name}` : t.who==='all' ? '全公司 · Sasa 拆解' : `${AG[t.who].name} · ${AG[t.who].cn}`;
+const whoName = t => t.auto ? `自动化 · ${AG[t.who].name}` : t.who==='all' ? '全公司 · Sasa 拆解' : `${AG[t.who].name} · ${AG[t.who].cn}`;
 const whoColor = t => t.who==='all' ? '#ffd166' : AG[t.who].color;
 function toast(msg){const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>{el.hidden = true}, 5000)}
 function renderTasks(){

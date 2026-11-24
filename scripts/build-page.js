@@ -25,7 +25,7 @@ function cut(startMark, endMark, to) {
 rep('<span class="chip">演示模式 · <b>模拟事件与示例数据</b></span>',
   '<span class="chip" id="conn">连接中…</span><button type="button" class="chip cbtn" id="memBtn" hidden>团队成员</button><button type="button" class="chip cbtn" id="outBtn" hidden>退出</button>');
 cut('<div class="review" id="review" hidden>', '</div>\n        </div>',
-  '<div class="review" id="review" hidden>\n          <b>④ 待你审批</b><span id="rvTitle"></span><span id="rvSum"></span>\n          <textarea id="rvNote" placeholder="修改意见（退回时填写，可以留空）"></textarea>\n          <div class="rvb"><button type="button" class="ap" id="approve">批准 ✓</button><button type="button" id="revise">退回修改</button><button type="button" id="rvDoc">看完整内容</button></div>\n        </div>');
+  '<div class="review" id="review" hidden>\n          <b>待你审批</b><span id="rvTitle"></span><span id="rvSum"></span>\n          <textarea id="rvNote" placeholder="修改意见（退回时填写，可以留空）"></textarea>\n          <div class="rvb"><button type="button" class="ap" id="approve">批准 ✓</button><button type="button" id="revise">退回修改</button><button type="button" id="rvDoc">看全文</button></div>\n        </div>');
 cut('<section class="panel how">', '</section>', `<section class="panel how">
       <h2>现在接上了什么</h2>
       <p class="lead">这是正式版：任务和审批存在 Firestore，7 位员工由 Claude 真正产出内容，自动化按时间表在云端运行。目前还没有接入外部账号，所以员工交的是方案、文案、清单和脚本，对外操作仍由人来执行。</p>
