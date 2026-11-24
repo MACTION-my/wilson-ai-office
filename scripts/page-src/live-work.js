@@ -287,8 +287,8 @@ function hit(e){
   return ALL.find(id=>{const a=AG[id], [px,py]=P(a.pos.x,a.pos.y,a.z); return Math.hypot(px-x,py-TW*0.5*PS*0.9-y) < TW*0.6*PS});
 }
 function hitBot(e){const [x,y] = toWorld(e), [px,py] = P(bot.pos.x,bot.pos.y,0.1); return Math.hypot(px-x,(py-y)*1.6) < TW*0.45}
-cv.addEventListener('click',e=>{const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
-cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x:e.clientX-r.left,y:e.clientY-r.top}; cv.style.cursor = (hit(e)||hitBot(e))?'pointer':'default'});
+cv.addEventListener('click',e=>{const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitPet(e)){} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x:e.clientX-r.left,y:e.clientY-r.top}; cv.style.cursor = (hit(e)||hitBot(e)||PETS.some(p=>{const [x,y]=toWorld(e),[px,py]=P(p.pos.x,p.pos.y,p.z||0);return Math.hypot(px-x,py-TW*0.36-y)<TW*0.5}))?'pointer':'default'});
 cv.addEventListener('mouseleave',()=>{mouse=null});
 
 ALL.forEach(id=>{renderCard(id); renderSpark(id)});

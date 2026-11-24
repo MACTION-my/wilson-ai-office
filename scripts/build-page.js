@@ -30,14 +30,14 @@ cut('<section class="panel how">', '</section>', `<section class="panel how">
       <h2>现在接上了什么</h2>
       <p class="lead">这是正式版：任务和审批存在 Firestore，7 位员工由 Claude 真正产出内容，自动化按时间表在云端运行。目前还没有接入外部账号，所以员工交的是方案、文案、清单和脚本，对外操作仍由人来执行。</p>
       <div class="steps">
-        <div class="step"><h3><small>01</small>已经可以用</h3><p>派任务给全公司或某位员工、审批与退回修改、⚡ 自动化、任务记录、团队成员管理，手机和电脑同步。</p></div>
+        <div class="step"><h3><small>01</small>已经可以用</h3><p>派任务给全公司或某位员工、审批与退回修改、自动化、任务记录、团队成员管理，手机和电脑同步。</p></div>
         <div class="step"><h3><small>02</small>下一步接入</h3><p>Meta 广告后台、WhatsApp Business、Instagram / Facebook 账号、订单系统。接上后，标着「需先接入」的自动化就能真的执行。</p></div>
         <div class="step"><h3><small>03</small>安全规则</h3><p>花钱、对外发布、群发都要 Wilson 批准；只有 Wilson 批准的人能登录；AI 的密钥只放在云端，不在网页里。</p></div>
       </div>
     </section>`);
 rep('<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>',
   `<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>
-  <dialog id="docDlg" class="dlg" aria-labelledby="docTitle"><div class="rd"><div class="rdh"><div><h3 id="docTitle"></h3><p>AI 员工交付的完整内容</p></div><button type="button" class="x" id="docClose" aria-label="关闭">✕</button></div><pre class="docbody" id="docBody"></pre><div class="rdf"><button type="button" class="go" id="docCopy">复制全文</button></div></div></dialog>
+  <dialog id="docDlg" class="dlg" aria-labelledby="docTitle"><div class="rd"><div class="rdh"><div><h3 id="docTitle"></h3><p>AI 员工交付的完整内容</p></div><button type="button" class="x" id="docClose" aria-label="关闭">✕</button></div><pre class="docbody" id="docBody"></pre><div class="timgs big" id="docImgs"></div><div class="rdf"><button type="button" class="go" id="docCopy">复制全文</button></div></div></dialog>
   <dialog id="memDlg" class="dlg" aria-label="团队成员"><div class="rd"><div class="rdh"><div><h3>团队成员</h3><p>批准同事进入办公室</p></div><button type="button" class="x" id="memClose" aria-label="关闭">✕</button></div><div id="memBody" class="autos"></div></div></dialog>
   <div class="toast" id="toast" hidden role="status"></div>
   <div class="gate" id="gate"><div class="gcard"><h2>Wilson 的 AI 办公室</h2><p id="gmsg">正在连接…</p><button type="button" class="go" id="gbtn" hidden></button><p class="tip" id="gnote"></p></div></div>`);
@@ -60,6 +60,13 @@ rep(".rdf .go{width:auto;padding:8px 16px}", `.rdf .go{width:auto;padding:8px 16
 .docbody{white-space:pre-wrap;word-break:break-word;font:13.5px/1.7 var(--f-body);background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:10px;padding:14px;max-height:60vh;overflow:auto;margin:0}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:#1d1a48;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;max-width:calc(100vw - 32px)}
 .need{color:var(--warn)}
+.timgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
+.timgs.big{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.timgs.big:empty{display:none}
+.timgs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;transition:transform .2s}
+.timgs a:hover img{transform:scale(1.03)}
+.tag.qa-ok{background:rgba(52,211,153,.16);color:var(--ok)}
+.tag.qa-bad{background:rgba(251,191,36,.16);color:var(--warn)}
 .rd h4{margin-top:4px}`);
 
 /* ---- remove fake KPI numbers ---- */

@@ -10,6 +10,9 @@ import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { getStorage } from "firebase-admin/storage";
+import { GoogleAuth } from "google-auth-library";
 
 const ORG = JSON.parse(readFileSync(new URL("./org.json", import.meta.url), "utf8"));
 const REGION = "us-central1"; // same location as the Firestore database (nam5)
@@ -27,23 +30,35 @@ function claude() {
   if (!client) client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value().trim() });
   return client;
 }
-async function ask(system, user, effort = "medium") {
+async function ask(system, user, effort = "medium", { web = false } = {}) {
   // Server-side fallback: if the request is declined by a safety classifier, the API retries on a fallback model.
-  const res = await claude().beta.messages.create({
-    model: MODEL,
-    max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort },
-    system,
-    messages: [{ role: "user", content: user }],
-  });
-  if (res.stop_reason === "refusal") throw new Error("Claude 拒绝了这个请求，请换个说法再试");
-  const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+  // With web search on, a long search can pause the turn; resending the conversation lets the server resume it.
+  const tools = web ? [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }] : null;
+  const assistant = [];
+  let text = "";
+  for (let turn = 0; turn < 5; turn++) {
+    const messages = [{ role: "user", content: user }];
+    if (assistant.length) messages.push({ role: "assistant", content: assistant });
+    const res = await claude().beta.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort },
+      system,
+      messages,
+      ...(tools ? { tools } : {}),
+    });
+    if (res.stop_reason === "refusal") throw new Error("Claude 拒绝了这个请求，请换个说法再试");
+    text += res.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+    if (res.stop_reason !== "pause_turn") break;
+    assistant.push(...res.content);
+  }
+  text = text.trim();
   if (!text) throw new Error("Claude 没有返回内容");
   return text;
 }
-function systemFor(id) {
+function systemFor(id, { format = true } = {}) {
   const a = ORG.agents[id], r = a.role;
   return [
     `你是 ${ORG.company} 的 ${a.name}，岗位：${r.title}（${a.dept} · ${a.cn}）。`,
@@ -55,7 +70,9 @@ function systemFor(id) {
     "工作规则：",
     "- 目前还没有连接任何外部系统（广告后台、WhatsApp、社媒账号、订单系统都没接）。你只能产出可以直接使用的方案、文案、清单、脚本或草稿。不要假装已经执行了对外操作，也不要编造真实数据；需要数据时写明需要什么，并给出标注清楚的合理假设。",
     "- 用简体中文，结构清晰，可以直接交付。",
-    "- 第一行写一句话总结（不超过 60 个字，不加任何符号前缀），空一行后再写完整交付内容（可以用 Markdown）。",
+    ...(a.web ? ["- 你可以上网搜索。说到「流行」「趋势」时要先搜索，附上来源链接，并写明是哪段时间的趋势。"] : []),
+    ...(a.images ? ["- 需要配图时，在全文最后另起一行写 [[IMAGE: 用英文写的详细画面描述（主体、构图、光线、风格），画面里不要出现任何文字或 logo]]，最多 2 张。系统会自动用 AI 生成图片并附在交付里。"] : []),
+    ...(format ? ["- 第一行写一句话总结（不超过 60 个字，不加任何符号前缀），空一行后再写完整交付内容（可以用 Markdown）。"] : []),
   ].join("\n");
 }
 function split(text) {
@@ -66,12 +83,55 @@ function split(text) {
   return { summary: summary || "已完成", body };
 }
 
+/* ---------- images: Google Imagen on Vertex AI, saved to Firebase Storage ---------- */
+const PROJECT = process.env.GCLOUD_PROJECT || "wilson-ai-office";
+const BUCKET = `${PROJECT}.firebasestorage.app`;
+const gauth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+function takeImages(text) {
+  const prompts = [];
+  const clean = text.replace(/\[\[IMAGE:\s*([\s\S]*?)\]\]/g, (m, p) => { prompts.push(p.trim()); return ""; }).trim();
+  return { clean, prompts };
+}
+async function imagen(prompt) {
+  const token = await gauth.getAccessToken();
+  for (const model of ["imagen-4.0-generate-001", "imagen-3.0-generate-002"]) {
+    const r = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/us-central1/publishers/google/models/${model}:predict`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1, aspectRatio: "1:1" } }),
+    });
+    if (r.status === 404) continue;
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`图片生成失败（${r.status}）：${(j.error && j.error.message) || ""}`.slice(0, 300));
+    const p = j.predictions && j.predictions[0];
+    if (!p || !p.bytesBase64Encoded) throw new Error("图片被安全过滤挡下了，换个画面描述再试");
+    return Buffer.from(p.bytesBase64Encoded, "base64");
+  }
+  throw new Error("找不到可用的 Imagen 模型");
+}
+async function saveImage(taskId, i, buf) {
+  const bucket = getStorage().bucket(BUCKET), path = `deliverables/${taskId}/image-${i + 1}.png`, token = randomUUID();
+  await bucket.file(path).save(buf, { contentType: "image/png", metadata: { metadata: { firebaseStorageDownloadTokens: token } } });
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+}
+async function makeImages(ref, prompts) {
+  const images = [], errors = [];
+  if (!prompts.length) return { images, errors };
+  await ref.update({ step: { i: 9, tool: "generate_image", desc: "Lulu 正在生成配图", st: true } });
+  await ev(ref.id, "lulu", "tool_call", { tool: "generate_image", count: Math.min(3, prompts.length) });
+  for (const [i, prompt] of prompts.slice(0, 3).entries()) {
+    try { images.push({ url: await saveImage(ref.id, i, await imagen(prompt)), prompt }); }
+    catch (e) { logger.error("image failed", e); errors.push(String(e.message || e)); }
+  }
+  return { images, errors };
+}
+
 /* ---------- helpers ---------- */
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function ev(taskId, agent, event, extra = {}) {
   await db.collection("events").add({ agent, event, taskId, ...extra, ts: FieldValue.serverTimestamp() });
 }
-const SENSITIVE = /(预算|花费|付款|采购|补货|群发|发布|上线|投放|推广|折|退款|合作|网红|对外|加钱|买)/;
+const SENSITIVE = /(预算|花费|付款|采购|补货|群发|发布|上线|投放|推广|广告|ads|折|退款|合作|网红|对外|加钱|买)/i;
 async function needsApproval(t) {
   const s = (await db.doc("settings/main").get()).data() || {};
   const rule = s.aprule || "smart";
@@ -88,7 +148,9 @@ async function taskDigest(days) {
   return snap.docs.map((d) => {
     const t = d.data(), who = t.who === "all" ? "全公司" : ORG.agents[t.who]?.name;
     const sum = (t.outs || []).find((o) => !o.final)?.text || "";
-    return `- [${t.status}] ${who}${t.auto ? "（自动化）" : ""}：${t.title}${sum ? " → " + sum : ""}`;
+    const at = t.createdAt ? new Intl.DateTimeFormat("zh-CN", { timeZone: ORG.timezone, month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(t.createdAt.toDate()) : "";
+    const qa = t.qa ? (t.qa.ok ? " [Wawa 验收合格]" : ` [Wawa 验收需改进：${t.qa.note}]`) : "";
+    return `- [${t.status}] ${at} ${who}${t.auto ? "（自动化）" : ""}：${t.title}${sum ? " → " + sum : ""}${qa}${t.error ? " 错误：" + t.error : ""}`;
   }).join("\n");
 }
 async function finish(ref, t, who, summary, body, extra = {}) {
@@ -120,12 +182,14 @@ async function runOne(ref, t) {
   for (let i = 0; i < steps.length; i++) {
     await ref.update({ stage: "tool", step: steps[i], prog: 1 + i });
     await ev(ref.id, id, "tool_call", { tool: steps[i].tool });
-    if (i === callAt) text = await ask(systemFor(id), prompt);
+    if (i === callAt) text = await ask(systemFor(id), prompt, "medium", { web: !!ORG.agents[id].web });
     else await wait(2500);
   }
-  const { summary, body } = split(text);
+  const { clean, prompts } = takeImages(text);
+  const { images, errors } = await makeImages(ref, prompts);
+  const { summary, body } = split(clean);
   await ref.update({ prog: steps.length + 1 });
-  await finish(ref, t, id, summary, body);
+  await finish(ref, t, id, summary, body + (errors.length ? `\n\n（配图有 ${errors.length} 张没生成成功：${errors[0]}）` : ""), images.length ? { images } : {});
 }
 
 /* ---------- whole company: Sasa plans, departments work in parallel, Sasa merges ---------- */
@@ -146,18 +210,21 @@ async function runTeam(ref, t) {
   await ref.update({ stage: "depts", team, prog: 1, total: ids.length + 3 });
   await ev(ref.id, "sasa", "kickoff", { assigned: ids });
   await wait(6000);
-  const parts = {};
+  const parts = {}, allPrompts = [];
   await Promise.all(ids.map(async (d) => {
     await ref.update({ [`team.${d}.state`]: "working" });
     await ev(ref.id, d, "tool_call", { subtask: subs[d] });
-    const text = await ask(systemFor(d), `全公司任务：${t.title}\nSasa 分给你的部分：${subs[d]}\n请交付你负责的这部分。`);
-    const { summary, body } = split(text);
+    const raw = await ask(systemFor(d), `全公司任务：${t.title}\nSasa 分给你的部分：${subs[d]}\n请交付你负责的这部分。`, "medium", { web: !!ORG.agents[d].web });
+    const { clean, prompts } = takeImages(raw);
+    allPrompts.push(...prompts);
+    const { summary, body } = split(clean);
     parts[d] = body;
     await ref.update({ [`team.${d}.state`]: "done", [`team.${d}.summary`]: summary, prog: FieldValue.increment(1),
       outs: FieldValue.arrayUnion({ who: ORG.agents[d].name, text: summary }) });
     await ev(ref.id, d, "done", { subtask: subs[d] });
   }));
-  await ref.update({ stage: "merge", parts });
+  const { images } = await makeImages(ref, allPrompts);
+  await ref.update({ stage: "merge", parts, ...(images.length ? { images } : {}) });
   await ev(ref.id, "sasa", "tool_call", { tool: "merge_outputs" });
   const merged = await ask(systemFor("sasa"),
     `全公司任务：${t.title}\n\n下面是各部门交上来的成果。请合并成一份给 Wilson 的完整执行方案：先写总体时间线和每个部门负责什么，再写需要 Wilson 拍板的事项，最后附上各部门的关键内容（精简，不要原样照抄）。\n\n` +
@@ -213,7 +280,7 @@ export const onTaskDecision = onDocumentUpdated(
   });
 
 /* ---------- automations ---------- */
-const TZ_OFFSET = "+08:00"; // Asia/Singapore, no daylight saving
+const TZ_OFFSET = "+08:00"; // Malaysia (Asia/Kuala_Lumpur), no daylight saving
 function localParts(d) {
   const f = new Intl.DateTimeFormat("en-CA", { timeZone: ORG.timezone, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" });
   const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
@@ -224,6 +291,10 @@ function isDue(s, last, now) {
   const lastMs = last ? last.toMillis() : 0;
   if (s.every) return now.getTime() - lastMs >= (s.every - 1) * 60000;
   const lp = localParts(now), at = s.daily || s.at;
+  if (s.everyDays) {
+    const target = new Date(`${lp.date}T${at}:00${TZ_OFFSET}`).getTime();
+    return now.getTime() >= target && (!lastMs || now.getTime() - lastMs >= s.everyDays * 864e5 - 3 * 3600e3);
+  }
   if (s.weekly && lp.dow !== s.weekly) return false;
   const target = new Date(`${lp.date}T${at}:00${TZ_OFFSET}`).getTime();
   return now.getTime() >= target && lastMs < target;
@@ -251,3 +322,26 @@ export const automationRunNow = onDocumentWritten({ document: "automations/{key}
   await event.data.after.ref.set({ runNow: false }, { merge: true });
   if (u && await createAutoTask(u)) await event.data.after.ref.set({ last: Timestamp.now(), runs: FieldValue.increment(1) }, { merge: true });
 });
+
+/* ---------- Wawa checks every finished task ---------- */
+export const onTaskDone = onDocumentUpdated(
+  { document: "tasks/{id}", secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 300, memory: "512MiB" },
+  async (event) => {
+    const before = event.data.before.data(), t = event.data.after.data(), ref = event.data.after.ref;
+    if (before.status === "done" || t.status !== "done" || t.qa) return;
+    if (t.who === "wawa" || (t.auto && ["sasa", "wawa"].includes(t.who))) return;
+    const owner = t.who === "all" ? "全公司（Sasa 汇总）" : ORG.agents[t.who].name;
+    try {
+      const verdict = await ask(systemFor("wawa", { format: false }),
+        `请验收这个任务有没有按 Wilson 的指令做到位。\nWilson 的指令：${t.title}\n负责人：${owner}\n${(t.images || []).length ? `附了 ${t.images.length} 张 AI 配图。\n` : ""}交付内容：\n${(t.result || "").slice(0, 15000)}\n\n只回答两行：第一行只写「合格」或「需改进」，第二行用一句话说明理由（需改进时写清楚缺什么、谁要补）。`,
+        "low");
+      const lines = verdict.split("\n").map((x) => x.replace(/\*\*/g, "").trim()).filter(Boolean);
+      const ok = /^合格/.test(lines[0] || "");
+      const note = (lines.slice(1).join(" ") || lines[0] || "").slice(0, 200);
+      await ref.update({ qa: { ok, note, at: FieldValue.serverTimestamp() },
+        outs: FieldValue.arrayUnion({ who: ok ? "Wawa 验收合格" : "Wawa 验收：需改进", text: note }) });
+      await ev(ref.id, "wawa", "qa", { task: t.title, ok });
+    } catch (e) {
+      logger.error("qa failed", ref.id, e);
+    }
+  });

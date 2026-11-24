@@ -10,8 +10,9 @@ const TS = {queued:['排队中','#9d99c9'], running:['进行中','#3ee6ff'], rev
 const tasks = [], byId = new Map(), tasksEl = $('#tasks');
 let focus = null, tFilter = 'all', session = {isOwner:false, name:''}, rule = 'smart', reviewId = null;
 const tsMs = v => v && typeof v.toMillis === 'function' ? v.toMillis() : 0;
-const hmOf = ms => {if(!ms) return ''; const d = new Date(ms); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
-const isToday = ms => ms && new Date(ms).toDateString() === new Date().toDateString();
+const hmOf = ms => ms ? myTime(new Date(ms)) : '';
+const myDay = d => new Intl.DateTimeFormat('en-CA',{timeZone:MY_TZ}).format(d);
+const isToday = ms => !!ms && myDay(new Date(ms)) === myDay(new Date());
 const whoName = t => t.auto ? `自动化 · ${AG[t.who].name}` : t.who==='all' ? '全公司 · Sasa 拆解' : `${AG[t.who].name} · ${AG[t.who].cn}`;
 const whoColor = t => t.who==='all' ? '#ffd166' : AG[t.who].color;
 function toast(msg){const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>{el.hidden = true}, 5000)}
@@ -25,13 +26,14 @@ function renderTasks(){
     const [lab,sc] = TS[t.status] || TS.queued, pct = Math.round((t.prog||0)/(t.total||1)*100), open = t.open ?? (t.status!=='done' || t===lastDone);
     const outs = t.outs || [], fin = outs.filter(o=>o.final), rest = outs.filter(o=>!o.final);
     return `<article class="task${t.status==='review'?' rv':''}" style="--c:${whoColor(t)}">
-      <div class="th"><span class="tw">${esc(whoName(t))}</span>${t.needAp!=null?`<span class="tag">${t.needAp?'需审批':'直接完成'}</span>`:''}<span class="pill" style="--pc:${sc}">${lab}</span></div>
+      <div class="th"><span class="tw">${esc(whoName(t))}</span>${t.needAp!=null?`<span class="tag">${t.needAp?'需审批':'直接完成'}</span>`:''}${t.qa?`<span class="tag ${t.qa.ok?'qa-ok':'qa-bad'}" title="${esc(t.qa.note||'')}">${t.qa.ok?'Wawa 验收合格':'Wawa：需改进'}</span>`:''}<span class="pill" style="--pc:${sc}">${lab}</span></div>
       <div class="tt">${esc(t.title)}${t.auto && AUTO_BY[t.autoKey]?` <span class="tag">${esc(AUTO_BY[t.autoKey].cad)}</span>`:''}</div>
       <div class="bar"><i style="width:${t.status==='done'?100:pct}%"></i></div>
       <div class="tm"><span>${hmOf(tsMs(t.createdAt))} ${t.auto?'自动触发':'派出'}${t.finishedAt?` · ${hmOf(tsMs(t.finishedAt))} ${t.status==='failed'?'停止':'完成'}`:''}</span><span>${t.status==='done'?100:pct}%</span></div>
       ${t.status==='failed'?`<div class="terr">${esc(t.error||'未知错误')}</div>`:''}
       ${t.status==='review'&&session.isOwner?`<div class="rvb"><button type="button" class="ap" data-ap="${t.id}">批准 ✓</button><button type="button" data-rv="${t.id}">退回修改</button></div>`:''}
       ${outs.length?`<details data-id="${t.id}"${open?' open':''}><summary>交付物（${outs.length}）</summary><div class="outs">${[...fin,...rest].map(o=>`<div class="out${o.final?' final':''}" style="--c:${o.final?'#ffd166':(AG[TEAM.find(x=>AG[x].name===o.who)]||{}).color||'#9d99c9'}"><i></i><div><b>${esc(o.who)}</b>${esc(o.text)}</div></div>`).join('')}</div></details>`:''}
+      ${(t.images||[]).length?`<div class="timgs">${(t.images).map(im=>`<a href="${esc(im.url)}" target="_blank" rel="noopener"><img src="${esc(im.url)}" alt="AI 配图：${esc((im.prompt||'').slice(0,80))}" loading="lazy"></a>`).join('')}</div>`:''}
       ${t.result?`<button type="button" class="dbtn ghost" data-doc="${t.id}">查看完整交付</button>`:''}
     </article>`;
   }).join('');
@@ -45,6 +47,7 @@ function openDoc(id){
   const t = byId.get(id); if(!t) return;
   $('#docTitle').textContent = `${whoName(t)}：${t.title}`;
   $('#docBody').textContent = t.result || '';
+  $('#docImgs').innerHTML = (t.images||[]).map(im=>`<a href="${esc(im.url)}" target="_blank" rel="noopener"><img src="${esc(im.url)}" alt="AI 配图：${esc((im.prompt||'').slice(0,80))}"></a>`).join('');
   $('#docDlg').showModal();
 }
 $('#docClose').addEventListener('click', () => $('#docDlg').close());

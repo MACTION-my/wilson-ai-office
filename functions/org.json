@@ -1,69 +1,674 @@
 {
   "company": "Wilson & Co.",
-  "timezone": "Asia/Singapore",
+  "timezone": "Asia/Kuala_Lumpur",
   "context": "Wilson & Co. 是一家社媒电商公司：通过 Facebook / Instagram / TikTok 内容和 Meta 广告获客，客户主要在 WhatsApp 上咨询、下单和售后，卖自有产品（例如护肤品「玫瑰精华液」）。老板是 Wilson，所有花钱、对外发布、群发的事都要他批准。",
   "agents": {
-    "sasa": {"name": "Sasa", "dept": "PA", "cn": "总助",
-      "role": {"title": "总经理助理 · 任务总调度", "duty": ["接收 Wilson 的指令，拆给各部门", "跟进进度，催办卡住的任务", "把各部门成果汇总成方案送审"], "daily": ["管理 Wilson 的日程和会议", "写会议纪要", "每周收齐各部门周报"], "deliver": "周报、会议纪要、项目方案", "kpi": "任务按时完成率", "approve": ["对外合作", "对外日程"], "hand": "收各部门周报 → 汇总给 Wilson"},
-      "steps": [["read_request", "理解需求，列出要点"], ["draft_doc", "整理成文档", 1], ["check", "核对细节和日程"]]},
-    "nana": {"name": "Nana", "dept": "Meta Ads", "cn": "广告投放",
-      "role": {"title": "Meta 广告投放专员", "duty": ["管理 FB / IG 广告账户", "搭建受众、测试素材", "控制成本，提升 ROAS"], "daily": ["每天看数据，关掉亏钱的广告", "每周测新素材和新受众"], "deliver": "每日数据简报、周投放报告", "kpi": "ROAS、CPA、线索数", "approve": ["增加预算", "开新广告系列"], "hand": "从 Lulu、Bobo 拿素材"},
-      "steps": [["review_data", "梳理目标与受众"], ["draft_plan", "在大屏前写投放方案", 1], ["check_budget", "核对预算与风险"]]},
-    "mimi": {"name": "Mimi", "dept": "Social Media", "cn": "社媒内容",
-      "role": {"title": "社媒内容运营", "duty": ["运营 IG / FB / TikTok 账号", "排内容日历", "负责粉丝增长和互动"], "daily": ["每天发帖和 Story", "回评论", "追热点、写文案"], "deliver": "每周内容日历、月度社媒报告", "kpi": "粉丝增长、互动率", "approve": ["品牌重要帖子", "合作帖", "下周内容日历"], "hand": "从 Lulu、Bobo 拿素材；从 Kiki 拿客户问题做内容"},
-      "steps": [["research_trends", "研究热门话题"], ["write_captions", "写文案与话题标签", 1], ["polish", "检查语气与品牌规范"]]},
-    "kiki": {"name": "Kiki", "dept": "WhatsApp CS", "cn": "客服",
-      "role": {"title": "WhatsApp 客服兼销售跟进", "duty": ["回复咨询并促成下单", "处理售后与退换货", "维护老客户"], "daily": ["回复未读消息", "跟进下单未付款的客户", "维护快捷回复"], "deliver": "每日对话汇总、客户问题分类", "kpi": "首次回复时间、咨询成交率", "approve": ["群发消息", "退款", "额外折扣"], "hand": "从 Wawa 拿库存与发货时间"},
-      "steps": [["read_context", "整理客户情况"], ["draft_replies", "写回复话术"], ["tag_followups", "列出跟进事项"]]},
-    "lulu": {"name": "Lulu", "dept": "Graphic Design", "cn": "平面设计",
-      "role": {"title": "平面设计师", "duty": ["维护品牌视觉统一", "做广告素材、海报、产品图"], "daily": ["按需求出图", "导出各平台尺寸", "维护模板与规范"], "deliver": "主视觉、广告图、海报（目前先交设计 brief 和画面方案）", "kpi": "按时交稿、广告素材点击率", "approve": ["新品主视觉", "品牌形象改动"], "hand": "设计图交给 Nana、Mimi"},
-      "steps": [["moodboard", "整理视觉方向"], ["design_brief", "在画架上出画面方案", 1], ["sizes", "列出各平台尺寸"]]},
-    "bobo": {"name": "Bobo", "dept": "Video", "cn": "视频拍剪",
-      "role": {"title": "视频拍摄与剪辑", "duty": ["拍产品、开箱、直播视频", "给广告和社媒供片", "管理视频素材库"], "daily": ["按分镜拍摄", "剪 15s / 30s 版本，加字幕和配乐"], "deliver": "分镜脚本、拍摄清单、剪辑方案（成片需人工拍摄）", "kpi": "按时交片、完播率", "approve": ["模特或网红出镜"], "hand": "成片交给 Nana、Mimi"},
-      "steps": [["shotlist", "写分镜脚本"], ["plan_shoot", "在摄影棚排拍摄方案", 1], ["edit_plan", "写剪辑与字幕方案"]]},
-    "wawa": {"name": "Wawa", "dept": "Operations", "cn": "运营经理",
-      "role": {"title": "运营经理", "duty": ["管订单、库存、发货", "处理物流异常", "把关流程与时间线"], "daily": ["查当日订单和延迟单", "盘点库存", "更新流程看板"], "deliver": "每日订单报告、库存预警、流程清单", "kpi": "准时发货率、缺货次数", "approve": ["采购补货", "更换物流"], "hand": "库存与发货时间交给 Kiki"},
-      "steps": [["review_process", "梳理流程与时间线"], ["checklist", "在看板上排执行清单", 1], ["risks", "列出风险与负责人"]]}
+    "sasa": {
+      "name": "Sasa",
+      "dept": "PA",
+      "cn": "总助",
+      "role": {
+        "title": "总经理助理 · 项目监督",
+        "duty": [
+          "接收 Wilson 的指令，拆给各部门",
+          "监督每个项目有没有按时、按要求完成",
+          "把卡住、逾期、验收不合格的事报告给 Wilson"
+        ],
+        "daily": [
+          "管理 Wilson 的日程和会议",
+          "写会议纪要",
+          "每周收齐各部门周报"
+        ],
+        "deliver": "周报、会议纪要、项目方案",
+        "kpi": "任务按时完成率",
+        "approve": [
+          "对外合作",
+          "对外日程"
+        ],
+        "hand": "收各部门周报 → 汇总给 Wilson"
+      },
+      "steps": [
+        [
+          "read_request",
+          "理解需求，列出要点"
+        ],
+        [
+          "draft_doc",
+          "整理成文档",
+          1
+        ],
+        [
+          "check",
+          "核对细节和日程"
+        ]
+      ]
+    },
+    "nana": {
+      "name": "Nana",
+      "dept": "Meta Ads",
+      "cn": "广告投放",
+      "role": {
+        "title": "Meta 广告投放专员",
+        "duty": [
+          "Wilson 给主题，写广告文案（多个版本）和投放方案",
+          "和 Lulu 配合出广告图",
+          "控制成本，提升 ROAS"
+        ],
+        "daily": [
+          "每天看数据，关掉亏钱的广告",
+          "每周测新素材和新受众"
+        ],
+        "deliver": "每日数据简报、周投放报告",
+        "kpi": "ROAS、CPA、线索数",
+        "approve": [
+          "增加预算",
+          "开新广告系列"
+        ],
+        "hand": "从 Lulu、Bobo 拿素材"
+      },
+      "steps": [
+        [
+          "review_theme",
+          "理解广告主题与目标"
+        ],
+        [
+          "write_ads",
+          "在大屏前写广告文案与投放方案",
+          1
+        ],
+        [
+          "image_brief",
+          "写配图要求，交给 Lulu 出图"
+        ]
+      ],
+      "images": true
+    },
+    "mimi": {
+      "name": "Mimi",
+      "dept": "Social Media",
+      "cn": "社媒内容",
+      "role": {
+        "title": "社媒内容运营",
+        "duty": [
+          "每 2 天更新 Facebook 专页帖子",
+          "运营 IG / TikTok 账号，排内容日历",
+          "负责粉丝增长和互动"
+        ],
+        "daily": [
+          "每天发帖和 Story",
+          "回评论",
+          "追热点、写文案"
+        ],
+        "deliver": "每周内容日历、月度社媒报告",
+        "kpi": "粉丝增长、互动率",
+        "approve": [
+          "品牌重要帖子",
+          "合作帖",
+          "下周内容日历"
+        ],
+        "hand": "从 Lulu、Bobo 拿素材；从 Kiki 拿客户问题做内容"
+      },
+      "steps": [
+        [
+          "research_trends",
+          "研究热门话题"
+        ],
+        [
+          "write_captions",
+          "写文案与话题标签",
+          1
+        ],
+        [
+          "polish",
+          "检查语气与品牌规范"
+        ]
+      ],
+      "images": true
+    },
+    "kiki": {
+      "name": "Kiki",
+      "dept": "WhatsApp CS",
+      "cn": "客服 · 社群",
+      "role": {
+        "title": "WhatsApp 客服 · 社群通知",
+        "duty": [
+          "写 WhatsApp 社群通知（活动、新品、优惠），Wilson 批准后转发",
+          "整理客服话术与常见问题",
+          "跟进老客户"
+        ],
+        "daily": [
+          "回复未读消息",
+          "跟进下单未付款的客户",
+          "维护快捷回复"
+        ],
+        "deliver": "可直接复制转发的社群通知、客服话术",
+        "kpi": "首次回复时间、咨询成交率",
+        "approve": [
+          "群发消息",
+          "退款",
+          "额外折扣"
+        ],
+        "hand": "从 Wawa 拿库存与发货时间"
+      },
+      "steps": [
+        [
+          "read_context",
+          "整理要通知的内容"
+        ],
+        [
+          "draft_notice",
+          "写社群通知（可直接转发）"
+        ],
+        [
+          "check",
+          "检查语气、日期和优惠信息"
+        ]
+      ]
+    },
+    "lulu": {
+      "name": "Lulu",
+      "dept": "Graphic Design",
+      "cn": "平面设计",
+      "role": {
+        "title": "平面设计师",
+        "duty": [
+          "按需求生成广告图、帖子配图、海报",
+          "维护品牌视觉统一"
+        ],
+        "daily": [
+          "按需求出图",
+          "导出各平台尺寸",
+          "维护模板与规范"
+        ],
+        "deliver": "广告图、帖子配图、海报（AI 生成，可直接使用或再修）",
+        "kpi": "按时交稿、广告素材点击率",
+        "approve": [
+          "新品主视觉",
+          "品牌形象改动"
+        ],
+        "hand": "设计图交给 Nana、Mimi"
+      },
+      "steps": [
+        [
+          "moodboard",
+          "整理视觉方向"
+        ],
+        [
+          "design_brief",
+          "在画架上出画面方案",
+          1
+        ],
+        [
+          "sizes",
+          "列出各平台尺寸"
+        ]
+      ],
+      "images": true
+    },
+    "bobo": {
+      "name": "Bobo",
+      "dept": "Video",
+      "cn": "视频拍剪",
+      "role": {
+        "title": "视频拍摄与剪辑",
+        "duty": [
+          "搜索当下流行的短视频趋势和爆款形式",
+          "把趋势改成 Wilson 可以跟着拍的脚本",
+          "剪辑与字幕方案"
+        ],
+        "daily": [
+          "按分镜拍摄",
+          "剪 15s / 30s 版本，加字幕和配乐"
+        ],
+        "deliver": "趋势分析 + 分镜脚本（镜头、台词、字幕、BGM），照着拍就行",
+        "kpi": "按时交片、完播率",
+        "approve": [
+          "模特或网红出镜"
+        ],
+        "hand": "成片交给 Nana、Mimi"
+      },
+      "steps": [
+        [
+          "search_trends",
+          "上网搜索当下流行的短视频"
+        ],
+        [
+          "shotlist",
+          "在摄影棚写分镜脚本",
+          1
+        ],
+        [
+          "edit_plan",
+          "写剪辑与字幕方案"
+        ]
+      ],
+      "web": true
+    },
+    "wawa": {
+      "name": "Wawa",
+      "dept": "Operations",
+      "cn": "运营经理",
+      "role": {
+        "title": "运营经理 · 任务验收",
+        "duty": [
+          "检查每个任务有没有按 Wilson 的指令执行、做到位",
+          "不合格的写清楚原因，提醒负责的人",
+          "管订单、库存、发货流程"
+        ],
+        "daily": [
+          "查当日订单和延迟单",
+          "盘点库存",
+          "更新流程看板"
+        ],
+        "deliver": "每个任务的验收结果、每日验收汇总",
+        "kpi": "准时发货率、缺货次数",
+        "approve": [
+          "采购补货",
+          "更换物流"
+        ],
+        "hand": "库存与发货时间交给 Kiki"
+      },
+      "steps": [
+        [
+          "review_process",
+          "梳理流程与时间线"
+        ],
+        [
+          "checklist",
+          "在看板上排执行清单",
+          1
+        ],
+        [
+          "risks",
+          "列出风险与负责人"
+        ]
+      ]
+    }
   },
   "autos": [
-    {"key": "sasa_daily", "who": "sasa", "n": "整理今日工作简报", "cad": "每天 09:00", "schedule": {"daily": "09:00"}, "ap": false, "on": true, "data": "tasks_1d",
-     "steps": [["collect", "收集昨天到今天的任务"], ["brief", "写今日简报", 1]],
-     "prompt": "根据下面这 24 小时内公司任务记录，给 Wilson 写一份今日工作简报：昨天完成了什么、还有哪些在进行或等他审批、今天建议优先处理的 3 件事。没有记录就说明今天还没有任务，并建议今天可以派的 3 个任务。"},
-    {"key": "sasa_weekly", "who": "sasa", "n": "汇总各部门周报", "cad": "每周五 17:00", "schedule": {"weekly": 5, "at": "17:00"}, "ap": false, "on": true, "data": "tasks_7d",
-     "steps": [["collect", "收集本周各部门任务"], ["merge_report", "合并成一页周报", 1]],
-     "prompt": "根据下面这 7 天的公司任务记录，写一页周报：每个部门本周完成了什么、卡住了什么、下周建议。"},
-    {"key": "nana_test", "who": "nana", "n": "每周新素材 A/B 测试方案", "cad": "每周一 10:00", "schedule": {"weekly": 1, "at": "10:00"}, "ap": true, "on": true,
-     "steps": [["pick_angles", "挑选测试方向"], ["draft_test", "写测试方案（批准后才上线）", 1]],
-     "prompt": "写本周 Meta 广告新素材 A/B 测试方案：3 个测试方向、每个方向的文案和画面要求、受众、建议日预算和判断胜负的指标。"},
-    {"key": "nana_pause", "who": "nana", "n": "检查广告并暂停亏损广告", "cad": "每天 09:00", "schedule": {"daily": "09:00"}, "ap": false, "on": false, "needs": "Meta 广告后台（Marketing API）",
-     "steps": [["pull_ads_data", "拉取昨日广告数据"], ["pause_losers", "暂停 ROAS 过低的广告"]],
-     "prompt": "在还没接入广告后台的情况下，写一份每日广告检查清单和暂停规则（什么情况暂停、什么情况加预算）。"},
-    {"key": "mimi_daily", "who": "mimi", "n": "今日帖子文案草稿", "cad": "每天 10:00", "schedule": {"daily": "10:00"}, "ap": true, "on": true,
-     "steps": [["trend", "看今天的热点"], ["captions", "写帖子与 Story 文案", 1]],
-     "prompt": "写今天要发的 1 条帖子和 2 条 Story 的文案（含话题标签和配图要求），批准后由人工或接入后自动发布。"},
-    {"key": "mimi_calendar", "who": "mimi", "n": "排下周内容日历", "cad": "每周日 20:00", "schedule": {"weekly": 7, "at": "20:00"}, "ap": true, "on": true,
-     "steps": [["research_trends", "研究热门话题"], ["plan_calendar", "排 7 天内容日历", 1]],
-     "prompt": "排下周 7 天的社媒内容日历：每天的平台、形式（帖子 / Reels / Story）、主题、文案要点。"},
-    {"key": "mimi_publish", "who": "mimi", "n": "发布已批准的帖子", "cad": "每天 12:00", "schedule": {"daily": "12:00"}, "ap": false, "on": false, "needs": "Instagram / Facebook 账号（Graph API）",
-     "steps": [["load_calendar", "读取已批准的内容日历"], ["publish_post", "发布帖子与 Story", 1]],
-     "prompt": "在还没接入社媒账号的情况下，列出今天应发布的内容和发布检查清单。"},
-    {"key": "kiki_faq", "who": "kiki", "n": "更新 FAQ 与快捷回复", "cad": "每周一 09:30", "schedule": {"weekly": 1, "at": "09:30"}, "ap": false, "on": true,
-     "steps": [["review_faq", "整理常见问题"], ["quick_replies", "写快捷回复话术"]],
-     "prompt": "更新 WhatsApp 客服的 FAQ 和快捷回复：产品、价格与优惠、付款、发货时间、退换货 5 类，每类 3 条话术，语气亲切。"},
-    {"key": "kiki_reply", "who": "kiki", "n": "回复新的 WhatsApp 咨询", "cad": "每 5 分钟", "schedule": {"every": 5}, "ap": false, "on": false, "needs": "WhatsApp Business（Cloud API）",
-     "steps": [["open_inbox", "读取未读消息"], ["reply_whatsapp", "按话术回复并报价"]],
-     "prompt": "在还没接入 WhatsApp 的情况下，写一份新咨询的标准回复流程和话术。"},
-    {"key": "lulu_weekly", "who": "lulu", "n": "本周设计需求与画面方案", "cad": "每周三 10:00", "schedule": {"weekly": 3, "at": "10:00"}, "ap": false, "on": true,
-     "steps": [["read_brief", "整理本周设计需求"], ["design_brief", "写画面方案", 1]],
-     "prompt": "列出本周广告和社媒需要的设计稿（至少 4 张），每张写清楚用途、尺寸、画面构图、文字和配色。"},
-    {"key": "bobo_weekly", "who": "bobo", "n": "本周短视频拍摄脚本", "cad": "每周二 10:00", "schedule": {"weekly": 2, "at": "10:00"}, "ap": false, "on": true,
-     "steps": [["ideas", "想 3 个短视频点子"], ["shotlist", "写分镜脚本", 1]],
-     "prompt": "写本周 3 条 15–30 秒短视频的分镜脚本（开箱、使用前后、客户好评各一条），含镜头、台词、字幕和 BGM 建议。"},
-    {"key": "wawa_daily", "who": "wawa", "n": "每日运营检查清单", "cad": "每天 08:30", "schedule": {"daily": "08:30"}, "ap": false, "on": true,
-     "steps": [["checklist", "排今日检查清单", 1], ["risks", "列出需要留意的风险"]],
-     "prompt": "写今天的运营检查清单：订单、发货、库存、物流异常、客服交接各要检查什么，谁负责，几点前完成。"},
-    {"key": "wawa_delay", "who": "wawa", "n": "检查延迟发货订单", "cad": "每小时", "schedule": {"every": 60}, "ap": false, "on": false, "needs": "订单 / 物流系统",
-     "steps": [["pull_orders", "拉取未发货订单"], ["notify_courier", "通知物流并更新看板", 1]],
-     "prompt": "在还没接入订单系统的情况下，写一份延迟订单处理流程。"}
+    {
+      "key": "sasa_daily",
+      "who": "sasa",
+      "n": "整理今日工作简报",
+      "cad": "每天 09:00",
+      "schedule": {
+        "daily": "09:00"
+      },
+      "ap": false,
+      "on": true,
+      "data": "tasks_1d",
+      "steps": [
+        [
+          "collect",
+          "收集昨天到今天的任务"
+        ],
+        [
+          "brief",
+          "写今日简报",
+          1
+        ]
+      ],
+      "prompt": "根据下面这 24 小时内公司任务记录，给 Wilson 写一份今日工作简报：昨天完成了什么、还有哪些在进行或等他审批、今天建议优先处理的 3 件事。没有记录就说明今天还没有任务，并建议今天可以派的 3 个任务。"
+    },
+    {
+      "key": "sasa_supervise",
+      "who": "sasa",
+      "n": "项目督导报告",
+      "cad": "每天 18:30",
+      "schedule": {
+        "daily": "18:30"
+      },
+      "ap": false,
+      "on": true,
+      "data": "tasks_1d",
+      "steps": [
+        [
+          "collect",
+          "检查所有进行中的项目"
+        ],
+        [
+          "report",
+          "写督导报告",
+          1
+        ]
+      ],
+      "prompt": "你是项目监督。根据下面 24 小时的任务记录，检查：有没有卡住太久的任务、等 Wilson 审批超过半天的、出错的、Wawa 验收不合格的。列出每一项的负责人和建议下一步，最后给 Wilson 一句话总结今天整体进度。"
+    },
+    {
+      "key": "sasa_weekly",
+      "who": "sasa",
+      "n": "汇总各部门周报",
+      "cad": "每周五 17:00",
+      "schedule": {
+        "weekly": 5,
+        "at": "17:00"
+      },
+      "ap": false,
+      "on": true,
+      "data": "tasks_7d",
+      "steps": [
+        [
+          "collect",
+          "收集本周各部门任务"
+        ],
+        [
+          "merge_report",
+          "合并成一页周报",
+          1
+        ]
+      ],
+      "prompt": "根据下面这 7 天的公司任务记录，写一页周报：每个部门本周完成了什么、卡住了什么、下周建议。"
+    },
+    {
+      "key": "nana_test",
+      "who": "nana",
+      "n": "每周新素材 A/B 测试方案",
+      "cad": "每周一 10:00",
+      "schedule": {
+        "weekly": 1,
+        "at": "10:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "pick_angles",
+          "挑选测试方向"
+        ],
+        [
+          "draft_test",
+          "写测试方案（批准后才上线）",
+          1
+        ]
+      ],
+      "prompt": "写本周 Meta 广告新素材 A/B 测试方案：3 个测试方向、每个方向的文案和画面要求、受众、建议日预算和判断胜负的指标。"
+    },
+    {
+      "key": "nana_pause",
+      "who": "nana",
+      "n": "检查广告并暂停亏损广告",
+      "cad": "每天 09:00",
+      "schedule": {
+        "daily": "09:00"
+      },
+      "ap": false,
+      "on": false,
+      "needs": "Meta 广告后台（Marketing API）",
+      "steps": [
+        [
+          "pull_ads_data",
+          "拉取昨日广告数据"
+        ],
+        [
+          "pause_losers",
+          "暂停 ROAS 过低的广告"
+        ]
+      ],
+      "prompt": "在还没接入广告后台的情况下，写一份每日广告检查清单和暂停规则（什么情况暂停、什么情况加预算）。"
+    },
+    {
+      "key": "mimi_fb",
+      "who": "mimi",
+      "n": "Facebook 专页帖子（每 2 天）",
+      "cad": "每 2 天 10:00",
+      "schedule": {
+        "everyDays": 2,
+        "at": "10:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "research_trends",
+          "想今天的帖子主题"
+        ],
+        [
+          "write_post",
+          "写帖子文案",
+          1
+        ],
+        [
+          "image",
+          "让 Lulu 生成配图"
+        ]
+      ],
+      "prompt": "写一条 Facebook 专页帖子：吸引人的开头、正文、行动号召和 3–5 个话题标签，适合社媒电商。再给一张配图。Wilson 批准后发布（接上 Facebook 专页后会自动发布）。"
+    },
+    {
+      "key": "mimi_daily",
+      "who": "mimi",
+      "n": "今日帖子文案草稿",
+      "cad": "每天 10:00",
+      "schedule": {
+        "daily": "10:00"
+      },
+      "ap": true,
+      "on": false,
+      "steps": [
+        [
+          "trend",
+          "看今天的热点"
+        ],
+        [
+          "captions",
+          "写帖子与 Story 文案",
+          1
+        ]
+      ],
+      "prompt": "写今天要发的 1 条帖子和 2 条 Story 的文案（含话题标签和配图要求），批准后由人工或接入后自动发布。"
+    },
+    {
+      "key": "mimi_calendar",
+      "who": "mimi",
+      "n": "排下周内容日历",
+      "cad": "每周日 20:00",
+      "schedule": {
+        "weekly": 7,
+        "at": "20:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "research_trends",
+          "研究热门话题"
+        ],
+        [
+          "plan_calendar",
+          "排 7 天内容日历",
+          1
+        ]
+      ],
+      "prompt": "排下周 7 天的社媒内容日历：每天的平台、形式（帖子 / Reels / Story）、主题、文案要点。"
+    },
+    {
+      "key": "mimi_publish",
+      "who": "mimi",
+      "n": "发布已批准的帖子",
+      "cad": "每天 12:00",
+      "schedule": {
+        "daily": "12:00"
+      },
+      "ap": false,
+      "on": false,
+      "needs": "Instagram / Facebook 账号（Graph API）",
+      "steps": [
+        [
+          "load_calendar",
+          "读取已批准的内容日历"
+        ],
+        [
+          "publish_post",
+          "发布帖子与 Story",
+          1
+        ]
+      ],
+      "prompt": "在还没接入社媒账号的情况下，列出今天应发布的内容和发布检查清单。"
+    },
+    {
+      "key": "kiki_faq",
+      "who": "kiki",
+      "n": "更新 FAQ 与快捷回复",
+      "cad": "每周一 09:30",
+      "schedule": {
+        "weekly": 1,
+        "at": "09:30"
+      },
+      "ap": false,
+      "on": true,
+      "steps": [
+        [
+          "review_faq",
+          "整理常见问题"
+        ],
+        [
+          "quick_replies",
+          "写快捷回复话术"
+        ]
+      ],
+      "prompt": "更新 WhatsApp 客服的 FAQ 和快捷回复：产品、价格与优惠、付款、发货时间、退换货 5 类，每类 3 条话术，语气亲切。"
+    },
+    {
+      "key": "kiki_reply",
+      "who": "kiki",
+      "n": "回复新的 WhatsApp 咨询",
+      "cad": "每 5 分钟",
+      "schedule": {
+        "every": 5
+      },
+      "ap": false,
+      "on": false,
+      "needs": "WhatsApp Business（Cloud API）",
+      "steps": [
+        [
+          "open_inbox",
+          "读取未读消息"
+        ],
+        [
+          "reply_whatsapp",
+          "按话术回复并报价"
+        ]
+      ],
+      "prompt": "在还没接入 WhatsApp 的情况下，写一份新咨询的标准回复流程和话术。"
+    },
+    {
+      "key": "lulu_weekly",
+      "who": "lulu",
+      "n": "本周设计需求与画面方案",
+      "cad": "每周三 10:00",
+      "schedule": {
+        "weekly": 3,
+        "at": "10:00"
+      },
+      "ap": false,
+      "on": true,
+      "steps": [
+        [
+          "read_brief",
+          "整理本周设计需求"
+        ],
+        [
+          "design_brief",
+          "写画面方案",
+          1
+        ]
+      ],
+      "prompt": "列出本周广告和社媒需要的设计稿（至少 4 张），每张写清楚用途、尺寸、画面构图、文字和配色。"
+    },
+    {
+      "key": "bobo_weekly",
+      "who": "bobo",
+      "n": "本周流行短视频 + 拍摄脚本",
+      "cad": "每周二 10:00",
+      "schedule": {
+        "weekly": 2,
+        "at": "10:00"
+      },
+      "ap": false,
+      "on": true,
+      "steps": [
+        [
+          "search_trends",
+          "上网搜索当下流行的短视频"
+        ],
+        [
+          "shotlist",
+          "写 3 条可以跟着拍的脚本",
+          1
+        ]
+      ],
+      "prompt": "先上网搜索最近在 TikTok / Instagram Reels / Facebook 流行的短视频形式和话题（尤其是马来西亚、护肤和社媒电商相关），列出 3 个趋势并说明为什么火、附来源链接。然后为每个趋势写一条 15–30 秒、Wilson 可以自己跟着拍的脚本：镜头、台词、字幕、BGM 建议和拍摄小贴士。"
+    },
+    {
+      "key": "wawa_daily",
+      "who": "wawa",
+      "n": "每日任务验收汇总",
+      "cad": "每天 18:00",
+      "schedule": {
+        "daily": "18:00"
+      },
+      "ap": false,
+      "on": true,
+      "steps": [
+        [
+          "collect",
+          "收集今天的任务和验收结果"
+        ],
+        [
+          "qa_report",
+          "写验收汇总",
+          1
+        ]
+      ],
+      "prompt": "根据下面今天的任务记录和验收结果，写一份每日验收汇总：哪些任务按要求完成、哪些不合格或还没完成（写清楚原因和负责人），明天要跟进什么。",
+      "data": "tasks_1d"
+    },
+    {
+      "key": "wawa_delay",
+      "who": "wawa",
+      "n": "检查延迟发货订单",
+      "cad": "每小时",
+      "schedule": {
+        "every": 60
+      },
+      "ap": false,
+      "on": false,
+      "needs": "订单 / 物流系统",
+      "steps": [
+        [
+          "pull_orders",
+          "拉取未发货订单"
+        ],
+        [
+          "notify_courier",
+          "通知物流并更新看板",
+          1
+        ]
+      ],
+      "prompt": "在还没接入订单系统的情况下，写一份延迟订单处理流程。"
+    },
+    {
+      "key": "kiki_community",
+      "who": "kiki",
+      "n": "本周 WhatsApp 社群通知",
+      "cad": "每周一 10:00",
+      "schedule": {
+        "weekly": 1,
+        "at": "10:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "read_context",
+          "整理本周活动与重点"
+        ],
+        [
+          "draft_notice",
+          "写社群通知（可直接转发）"
+        ]
+      ],
+      "prompt": "写本周要发到 WhatsApp 社群的通知：一条主通知（活动/新品/优惠，带 emoji 和 *粗体* 重点，适合直接复制转发），再加一条周中提醒。没有具体活动时，写一条关怀老客户、引导回购的通知，并标注需要 Wilson 填写的地方。"
+    }
   ]
 }
