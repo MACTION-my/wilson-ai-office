@@ -34,7 +34,7 @@ function renderTasks(){
       ${t.status==='review'&&session.isOwner?`<div class="rvb"><button type="button" class="ap" data-ap="${t.id}">批准 ✓</button><button type="button" data-rv="${t.id}">退回修改</button></div>`:''}
       ${outs.length?`<details data-id="${t.id}"${open?' open':''}><summary>交付物（${outs.length}）</summary><div class="outs">${[...fin,...rest].map(o=>`<div class="out${o.final?' final':''}" style="--c:${o.final?'#ffd166':(AG[TEAM.find(x=>AG[x].name===o.who)]||{}).color||'#9d99c9'}"><i></i><div><b>${esc(o.who)}</b>${esc(o.text)}</div></div>`).join('')}</div></details>`:''}
       ${(t.images||[]).length?`<div class="timgs">${(t.images).map(im=>`<a href="${esc(im.url)}" target="_blank" rel="noopener"><img src="${esc(im.url)}" alt="AI 配图：${esc((im.prompt||'').slice(0,80))}" loading="lazy"></a>`).join('')}</div>`:''}
-      ${t.result?`<button type="button" class="dbtn ghost" data-doc="${t.id}">查看完整交付</button>`:''}
+      <div class="dbtns">${t.result?`<button type="button" class="dbtn ghost" data-doc="${t.id}">查看完整交付</button>`:''}${t.who==='kiki'&&t.result?`<a class="dbtn wa" href="https://wa.me/?text=${encodeURIComponent(t.result.slice(0,3500))}" target="_blank" rel="noopener">用 WhatsApp 转发</a>`:''}</div>
     </article>`;
   }).join('');
 }
