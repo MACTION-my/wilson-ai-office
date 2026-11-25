@@ -26,15 +26,7 @@ rep('<span class="chip">演示模式 · <b>模拟事件与示例数据</b></span
   '<span class="chip" id="conn">连接中…</span><button type="button" class="chip cbtn" id="memBtn" hidden>团队成员</button><button type="button" class="chip cbtn" id="outBtn" hidden>退出</button>');
 cut('<div class="review" id="review" hidden>', '</div>\n        </div>',
   '<div class="review" id="review" hidden>\n          <b>待你审批</b><span id="rvTitle"></span><span id="rvSum"></span>\n          <textarea id="rvNote" placeholder="修改意见（退回时填写，可以留空）"></textarea>\n          <div class="rvb"><button type="button" class="ap" id="approve">批准 ✓</button><button type="button" id="revise">退回修改</button><button type="button" id="rvDoc">看全文</button></div>\n        </div>');
-cut('<section class="panel how">', '</section>', `<section class="panel how">
-      <h2>现在接上了什么</h2>
-      <p class="lead">这是正式版：任务和审批存在 Firestore，7 位员工由 Claude 真正产出内容，自动化按时间表在云端运行。目前还没有接入外部账号，所以员工交的是方案、文案、清单和脚本，对外操作仍由人来执行。</p>
-      <div class="steps">
-        <div class="step"><h3><small>01</small>已经可以用</h3><p>派任务给全公司或某位员工、审批与退回修改、自动化、任务记录、团队成员管理，手机和电脑同步。</p></div>
-        <div class="step"><h3><small>02</small>下一步接入</h3><p>Meta 广告后台、WhatsApp Business、Instagram / Facebook 账号、订单系统。接上后，标着「需先接入」的自动化就能真的执行。</p></div>
-        <div class="step"><h3><small>03</small>安全规则</h3><p>花钱、对外发布、群发都要 Wilson 批准；只有 Wilson 批准的人能登录；AI 的密钥只放在云端，不在网页里。</p></div>
-      </div>
-    </section>`);
+cut('<section class="panel how">', '</section>', '');
 rep('<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>',
   `<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>
   <dialog id="docDlg" class="dlg" aria-labelledby="docTitle"><div class="rd"><div class="rdh"><div><h3 id="docTitle"></h3><p>AI 员工交付的完整内容</p></div><button type="button" class="x" id="docClose" aria-label="关闭">✕</button></div><pre class="docbody" id="docBody"></pre><div class="timgs big" id="docImgs"></div><div class="rdf"><button type="button" class="go" id="docCopy">复制全文</button></div></div></dialog>
