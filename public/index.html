@@ -396,7 +396,7 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
       <section class="panel">
         <div class="ph"><h2>Wilson 的指令台</h2><span class="sub" id="qinfo">没有进行中的任务</span></div>
         <div class="boss" id="bossCard" tabindex="0">
-          <img class="ava" src="img/wilson.jpg" alt="" width="52" height="52">
+          <img class="ava" src="img/wilson.jpg?v=3" alt="" width="52" height="52">
           <div><div class="dname">Wilson<small>CEO</small></div><div class="dact"></div></div>
           <span class="pill"></span>
         </div>
@@ -1879,8 +1879,8 @@ function draw3D(t,now){
 window.SIM = {AG, ALL, TEAM, PETS, bot, WT, C, GX, GY, atSeat, setTW(v){TW = v; TH = v/2}, use3D(f){PROJ = f}};
 
 /* ---------- dashboard UI ---------- */
-const AVA = (id, w = 46) => `<img class="ava" src="img/${id}.jpg" alt="" width="${w}" height="${w}">`;
-const AVA_IMG = {}; ['wilson','sasa','nana','mimi','kiki','lulu','bobo','wawa'].forEach(id => { const im = new Image(); im.src = 'img/' + id + '.jpg'; AVA_IMG[id] = im; });
+const AVA = (id, w = 46) => `<img class="ava" src="img/${id}.jpg?v=3" alt="" width="${w}" height="${w}">`;
+const AVA_IMG = {}; ['wilson','sasa','nana','mimi','kiki','lulu','bobo','wawa'].forEach(id => { const im = new Image(); im.src = 'img/' + id + '.jpg?v=3'; AVA_IMG[id] = im; });
 const PET_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="11" cy="11" r="5" fill="currentColor" opacity=".7"/><circle cx="29" cy="11" r="5" fill="currentColor" opacity=".7"/><rect x="5" y="9" width="30" height="28" rx="12" fill="currentColor"/><ellipse cx="15" cy="22" rx="2.4" ry="3" fill="#1a1030"/><ellipse cx="25" cy="22" rx="2.4" ry="3" fill="#1a1030"/><circle cx="15.8" cy="21" r=".9" fill="#fff"/><circle cx="25.8" cy="21" r=".9" fill="#fff"/><path d="M17.5 28 Q20 30.5 22.5 28" stroke="#1a1030" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
 const deptsEl = $('#depts'), cards = {wilson: $('#bossCard')};
 function fmt(k){const v = k.v; return k.f==='x' ? v.toFixed(1)+'×' : k.f==='s' ? Math.round(v)+' 秒' : k.f==='p' ? Math.round(v)+'%' : k.f==='p1' ? v.toFixed(1)+'%' : Math.round(v).toLocaleString('en-US')}
