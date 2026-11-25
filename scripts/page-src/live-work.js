@@ -215,7 +215,7 @@ function openRole(id){
   const a = AG[id], r = ROLES[id] || {};
   dlg.dataset.id = id;
   $('#rdBody').innerHTML = `
-    <div class="rdh" style="--c:${a.color}">${PET_SVG}<div><h3 id="rdTitle">${a.name} · ${esc(a.dept)} · ${esc(a.cn)}</h3><p>${esc(r.title||'')}</p></div><button type="button" class="x" aria-label="关闭">✕</button></div>
+    <div class="rdh" style="--c:${a.color}">${AVA(id, 92)}<div><h3 id="rdTitle">${a.name} · ${esc(a.dept)} · ${esc(a.cn)}</h3><p>${esc(r.title||'')}</p></div><button type="button" class="x" aria-label="关闭">✕</button></div>
     <div class="rdg">
       <section><h4>核心职责</h4><ul>${li(r.duty)}</ul></section>
       <section><h4>日常任务</h4><ul>${li(r.daily)}</ul></section>

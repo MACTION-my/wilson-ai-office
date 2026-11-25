@@ -1,4 +1,4 @@
-// Wilson & Co. AI Office — the 7 AI employees.
+// MACTION AI Office — the 7 AI employees.
 // A task written to Firestore `tasks/{id}` is picked up here, worked on with Claude,
 // and every step is written back (task fields + `events`) so the office page can animate it.
 import { onDocumentCreated, onDocumentUpdated, onDocumentWritten } from "firebase-functions/v2/firestore";
@@ -93,13 +93,30 @@ function takeImages(text) {
   const clean = text.replace(/\[\[IMAGE:\s*([\s\S]*?)\]\]/g, (m, p) => { prompts.push(p.trim()); return ""; }).trim();
   return { clean, prompts };
 }
-async function imagen(prompt) {
+// Gemini image model first (Imagen models are no longer served for this project), Imagen as a fallback.
+async function geminiImage(token, prompt, aspectRatio, refs) {
+  const parts = [...refs.map(r => ({ inlineData: { mimeType: r.mime || "image/png", data: r.b64 } })), { text: prompt }];
+  const r = await fetch(`https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/gemini-2.5-flash-image:generateContent`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio } } }),
+  });
+  if (r.status === 404) return null;
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`图片生成失败（${r.status}）：${(j.error && j.error.message) || ""}`.slice(0, 300));
+  const img = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).find(p => p.inlineData && p.inlineData.data);
+  if (!img) throw new Error("图片被安全过滤挡下了，换个画面描述再试");
+  return Buffer.from(img.inlineData.data, "base64");
+}
+async function imagen(prompt, aspectRatio = "1:1", refs = []) {
   const token = await gauth.getAccessToken();
+  const g = await geminiImage(token, prompt, aspectRatio, refs);
+  if (g) return g;
   for (const model of ["imagen-4.0-generate-001", "imagen-3.0-generate-002"]) {
     const r = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/us-central1/publishers/google/models/${model}:predict`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1, aspectRatio: "1:1" } }),
+      body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1, aspectRatio } }),
     });
     if (r.status === 404) continue;
     const j = await r.json().catch(() => ({}));
@@ -451,3 +468,4 @@ export const onTaskDone = onDocumentUpdated(
       logger.error("qa failed", ref.id, e);
     }
   });
+

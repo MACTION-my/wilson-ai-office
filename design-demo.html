@@ -141,6 +141,9 @@ dialog#roleDlg::backdrop{background:rgba(4,3,14,.72);backdrop-filter:blur(3px)}
 .rd{padding:18px;display:flex;flex-direction:column;gap:14px}
 .rdh{display:flex;align-items:center;gap:12px}
 .rdh svg{width:44px;height:44px;color:var(--c);filter:drop-shadow(0 0 6px var(--c));flex:none}
+.ava{width:46px;height:46px;border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--c,#ffd166);box-shadow:0 0 12px color-mix(in srgb,var(--c,#ffd166) 60%,transparent);background:#fff}
+.boss .ava{width:52px;height:52px;--c:#ffd166}
+.rdh .ava{width:92px;height:92px;border-width:3px}
 .rdh h3{margin:0;font:700 18px var(--f-display)}
 .rdh p{margin:2px 0 0;color:var(--muted);font-size:13px}
 .rdh .x{margin-left:auto;background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:8px;width:32px;height:32px;cursor:pointer;flex:none}
@@ -369,7 +372,7 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
       <section class="panel">
         <div class="ph"><h2>Wilson 的指令台</h2><span class="sub" id="qinfo">没有进行中的任务</span></div>
         <div class="boss" id="bossCard" tabindex="0">
-          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M11 9 L13 2 L17 7 L20 1 L23 7 L27 2 L29 9 Z" fill="#ffd166"/><circle cx="9" cy="12" r="5" fill="#e2d9c8"/><circle cx="31" cy="12" r="5" fill="#e2d9c8"/><rect x="5" y="10" width="30" height="27" rx="12" fill="#f4eee3"/><circle cx="15" cy="22" r="4.4" fill="none" stroke="#2a2340" stroke-width="1.6"/><circle cx="25" cy="22" r="4.4" fill="none" stroke="#2a2340" stroke-width="1.6"/><path d="M19.4 22 H20.6" stroke="#2a2340" stroke-width="1.6"/><circle cx="15" cy="22" r="2" fill="#1a1030"/><circle cx="25" cy="22" r="2" fill="#1a1030"/><path d="M17.5 28.5 Q20 30.5 22.5 28.5" stroke="#1a1030" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M20 31 L18.4 32.6 L20 37 L21.6 32.6 Z" fill="#ffd166"/></svg>
+          <img class="ava" src="img/wilson.jpg" alt="" width="52" height="52">
           <div><div class="dname">Wilson<small>CEO</small></div><div class="dact"></div></div>
           <span class="pill"></span>
         </div>
@@ -1689,6 +1692,7 @@ function drawOverlay(id,t,now){
   ctx.font = `600 ${fs}px ${FB}`; const tw = ctx.measureText(a.name).width+14, th = fs+6;
   rr(px-tw/2,py-th,tw,th,th/2); ctx.fillStyle = 'rgba(8,6,24,.85)'; ctx.fill(); ctx.strokeStyle = rgba(c,.8); ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(a.name, px, py-th/2+0.5);
+  { const im = typeof AVA_IMG !== 'undefined' && AVA_IMG[id]; if (PROJ && im && im.complete && im.naturalWidth) { const r = th*0.95, ax = px - tw/2 - r*0.55, ay = py - th/2; ctx.save(); ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip(); ctx.drawImage(im, ax - r, ay - r*0.95, r*2, r*2); ctx.restore(); ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2); ctx.strokeStyle = c; ctx.lineWidth = 1.5; ctx.stroke(); } }
   let b = (a.say && a.say.until>now) ? a.say.text : a.bubble;
   if(!b && (a.state==='thinking')) b = '•'.repeat(Math.floor(t*3)%3+1);
   const key = b && b.startsWith('•') ? '•' : b;
@@ -1869,6 +1873,8 @@ function draw3D(t,now){
 window.SIM = {AG, ALL, TEAM, PETS, bot, WT, C, GX, GY, atSeat, setTW(v){TW = v; TH = v/2}, use3D(f){PROJ = f}};
 
 /* ---------- dashboard UI ---------- */
+const AVA = (id, w = 46) => `<img class="ava" src="img/${id}.jpg" alt="" width="${w}" height="${w}">`;
+const AVA_IMG = {}; ['wilson','sasa','nana','mimi','kiki','lulu','bobo','wawa'].forEach(id => { const im = new Image(); im.src = 'img/' + id + '.jpg'; AVA_IMG[id] = im; });
 const PET_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="11" cy="11" r="5" fill="currentColor" opacity=".7"/><circle cx="29" cy="11" r="5" fill="currentColor" opacity=".7"/><rect x="5" y="9" width="30" height="28" rx="12" fill="currentColor"/><ellipse cx="15" cy="22" rx="2.4" ry="3" fill="#1a1030"/><ellipse cx="25" cy="22" rx="2.4" ry="3" fill="#1a1030"/><circle cx="15.8" cy="21" r=".9" fill="#fff"/><circle cx="25.8" cy="21" r=".9" fill="#fff"/><path d="M17.5 28 Q20 30.5 22.5 28" stroke="#1a1030" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
 const deptsEl = $('#depts'), cards = {wilson: $('#bossCard')};
 function fmt(k){const v = k.v; return k.f==='x' ? v.toFixed(1)+'×' : k.f==='s' ? Math.round(v)+' 秒' : k.f==='p' ? Math.round(v)+'%' : k.f==='p1' ? v.toFixed(1)+'%' : Math.round(v).toLocaleString('en-US')}
@@ -1884,7 +1890,7 @@ bindHover(cards.wilson,'wilson');
 TEAM.forEach(id => {
   const a = AG[id], el = document.createElement('article');
   el.className = 'dept'; el.style.setProperty('--c', a.color); el.tabIndex = 0;
-  el.innerHTML = `<div class="dhead">${PET_SVG}<div><div class="dname">${a.name}</div><div class="ddept">${a.dept} · ${a.cn}</div></div><span class="pill"></span></div>
+  el.innerHTML = `<div class="dhead">${AVA(id)}<div><div class="dname">${a.name}</div><div class="ddept">${a.dept} · ${a.cn}</div></div><span class="pill"></span></div>
     <div class="dact"></div>
     <div class="kpis">${KPI[id].map((k,i)=>`<div><span>${k.l}</span><b data-k="${i}">${fmt(k)}</b></div>`).join('')}<div><span>完成子任务</span><b class="cnt">0</b></div></div>
     <div class="spark" aria-hidden="true">${'<span></span>'.repeat(18)}</div>
@@ -2407,7 +2413,7 @@ const li = arr => arr.map(x=>`<li>${esc(x)}</li>`).join('');
 function openRole(id){
   const a = AG[id], r = ROLES[id];
   $('#rdBody').innerHTML = `
-    <div class="rdh" style="--c:${a.color}">${PET_SVG}<div><h3 id="rdTitle">${a.name} · ${esc(a.dept)} · ${esc(a.cn)}</h3><p>${esc(r.title)}</p></div><button type="button" class="x" aria-label="关闭">✕</button></div>
+    <div class="rdh" style="--c:${a.color}">${AVA(id, 92)}<div><h3 id="rdTitle">${a.name} · ${esc(a.dept)} · ${esc(a.cn)}</h3><p>${esc(r.title)}</p></div><button type="button" class="x" aria-label="关闭">✕</button></div>
     <div class="rdg">
       <section><h4>核心职责</h4><ul>${li(r.duty)}</ul></section>
       <section><h4>日常任务</h4><ul>${li(r.daily)}</ul></section>

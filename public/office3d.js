@@ -145,9 +145,12 @@ const roadTex = canvasTex(256, 256, (g, w, h) => {
   for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(255,255,255,${rnd() * 0.05})`; g.fillRect(rnd() * w, rnd() * h, 2, 2); }
 }, true); roadTex.repeat.set(60, 60);
 
+const signImg = new Image(), signTexs = [];
+signImg.onload = () => signTexs.forEach(st => { st.draw(st.tex.image.getContext('2d')); st.tex.needsUpdate = true; });
+signImg.src = 'img/sign.jpg';
 function signTex(aspect, lines) {
   const w = 2048, h = Math.round(2048 / aspect);
-  return canvasTex(w, h, (g) => {
+  const draw = (g) => {
     const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#eef0f4');
     g.fillStyle = bg; g.fillRect(0, 0, w, h);
     g.fillStyle = '#c8101e'; g.fillRect(0, 0, w, h * 0.035); g.fillRect(0, h * 0.965, w, h * 0.035);
@@ -157,12 +160,18 @@ function signTex(aspect, lines) {
     const font = (px) => `900 ${px}px 'Arial Black','Space Grotesk','Inter',sans-serif`;
     g.font = font(fs); const mw = g.measureText(big).width; if (mw > w * 0.86) { fs *= w * 0.86 / mw; g.font = font(fs); }
     const cy = small ? h * 0.42 : h * 0.52, d = Math.max(2, fs * 0.05);
+    if (signImg.complete && signImg.naturalWidth) {
+      const ih = (small ? h * 0.62 : h * 0.8), iw = Math.min(w * 0.94, ih * signImg.naturalWidth / signImg.naturalHeight), ih2 = iw * signImg.naturalHeight / signImg.naturalWidth;
+      g.drawImage(signImg, (w - iw) / 2, cy - ih2 / 2, iw, ih2);
+    } else {
     for (let k = d; k > 0; k -= 1) { g.fillStyle = '#5e0008'; g.fillText(big, w / 2 + k * 0.6, cy + k); }
     const tg = g.createLinearGradient(0, cy - fs / 2, 0, cy + fs / 2); tg.addColorStop(0, '#ff4a4a'); tg.addColorStop(0.45, '#e01020'); tg.addColorStop(1, '#a00012');
     g.fillStyle = tg; g.fillText(big, w / 2, cy);
     g.lineWidth = Math.max(1, fs * 0.012); g.strokeStyle = 'rgba(255,190,190,.7)'; g.strokeText(big, w / 2, cy);
+    }
     if (small) { g.font = `900 ${h * 0.17}px 'Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif`; g.fillStyle = '#c0101c'; g.fillText(small, w / 2, h * 0.78); }
-  });
+  };
+  const tex = canvasTex(w, h, draw); signTexs.push({ tex, draw }); return tex;
 }
 function glowTex() {
   return canvasTex(128, 128, (g, w) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
@@ -552,10 +561,58 @@ box(building, 0.4, 10.4, 0.5, 12.6, F0 + 0.6, F0 + 2.3, mat('#ffffff', { roughne
 // HQ round table
 mesh(cyl(1.4, 1.4, 0.08, 48), mat('#f8f7ff', { roughness: 0.25, metalness: 0.1 }), C.x, F0 + 0.78, C.y, building);
 mesh(cyl(0.25, 0.4, 0.74, 16), deskLeg, C.x, F0 + 0.38, C.y, building);
-const holo = mesh(new THREE.TorusGeometry(0.6, 0.03, 8, 48), new THREE.MeshStandardMaterial({ color: '#3ee6ff', emissive: '#3ee6ff', emissiveIntensity: 2 }), C.x, F0 + 1.6, C.y, building, false);
-const holo2 = mesh(new THREE.TorusGeometry(0.4, 0.02, 8, 40), holo.material, C.x, F0 + 1.6, C.y, building, false);
-const holoCore = mesh(new THREE.IcosahedronGeometry(0.22, 1), new THREE.MeshStandardMaterial({ color: '#b48cff', emissive: '#7a5cff', emissiveIntensity: 1.6, flatShading: true }), C.x, F0 + 1.6, C.y, building, false);
-glow(C.x, F0 + 1.6, C.y, '#3ee6ff', 3.2, building);
+// a golden-red dragon circling a glowing, spinning pearl above the HQ table
+const DH = F0 + 1.75;
+const pearlTex = canvasTex(256, 128, (g, w, h) => {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#fff6d8'); gr.addColorStop(0.5, '#ffd27a'); gr.addColorStop(1, '#ff9a3c'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(255,90,40,.75)'; g.lineWidth = 7;
+  for (let k = 0; k < 3; k++) { g.beginPath(); for (let x = 0; x <= w; x += 4) { const y = h / 2 + Math.sin(x / w * Math.PI * 2 * 2 + k * 2.1) * h * 0.3; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(w * 0.3, h * 0.3, 10, 0, Math.PI * 2); g.fill();
+});
+const pearl = mesh(sph(0.24, 32, 24), new THREE.MeshPhysicalMaterial({ map: pearlTex, emissiveMap: pearlTex, emissive: '#ff8a2a', emissiveIntensity: 0.7, roughness: 0.1, clearcoat: 1 }), C.x, DH, C.y, building, false);
+const flames = [0, 1, 2].map(k => { const f = mesh(new THREE.TorusGeometry(0.28 + k * 0.03, 0.012, 6, 40), new THREE.MeshBasicMaterial({ color: k ? '#ffb347' : '#ff6a3d', transparent: true, opacity: 0.8 }), C.x, DH, C.y, building, false); return f; });
+glow(C.x, DH, C.y, '#ff9a3c', 1.6, building);
+const dRed = mat('#d71f2b', { roughness: 0.35, metalness: 0.35, emissive: '#5a0008', emissiveIntensity: 0.3 });
+const dGold = mat('#f4b733', { roughness: 0.3, metalness: 0.7, emissive: '#6a4200', emissiveIntensity: 0.25 });
+const dCream = mat('#ffe9b0', { roughness: 0.5 });
+const DN = 46, dSeg = [];
+for (let i = 0; i < DN; i++) {
+  const s = i / (DN - 1), r = 0.11 * (1 - s * 0.72) + 0.02;
+  const g = new THREE.Group(); building.add(g);
+  const b = mesh(sph(r, 14, 10), i % 4 === 0 ? dGold : dRed, 0, 0, 0, g, false); b.scale.set(1, 1, 1.5);
+  mesh(sph(r * 0.8, 10, 8), dCream, 0, -r * 0.35, 0, g, false).scale.set(0.9, 0.7, 1.5);
+  if (i % 2 === 0 && i > 2) { const fin = mesh(new THREE.ConeGeometry(r * 0.45, r * 1.3, 6), dGold, 0, r * 1.05, -r * 0.2, g, false); fin.rotation.x = -0.5; }
+  if (i === 14 || i === 30) [-1, 1].forEach(sd => { const leg = mesh(new THREE.CapsuleGeometry(0.025, 0.12, 4, 8), dRed, sd * r * 1.1, -r * 0.6, 0, g, false); leg.rotation.set(0.7, 0, sd * 0.6); [-1, 0, 1].forEach(c => { const cl = mesh(new THREE.ConeGeometry(0.012, 0.05, 5), dGold, sd * (r * 1.1 + 0.05) + c * 0.015, -r * 0.6 - 0.08, 0.06, g, false); cl.rotation.x = 1.4; }); });
+  dSeg.push(g);
+}
+const tailFin = mesh(new THREE.ConeGeometry(0.06, 0.22, 4), dGold, 0, 0, 0, dSeg[DN - 1], false); tailFin.rotation.x = -Math.PI / 2; tailFin.position.z = -0.12; tailFin.scale.x = 2.2;
+// head
+const dHead = new THREE.Group(); building.add(dHead);
+mesh(sph(0.15, 20, 14), dRed, 0, 0, 0, dHead, false).scale.set(1.05, 0.9, 1.2);
+mesh(sph(0.1, 16, 12), dRed, 0, -0.02, 0.17, dHead, false).scale.set(1.1, 0.75, 1.3);
+const dJaw = mesh(sph(0.085, 14, 10), dCream, 0, -0.08, 0.15, dHead, false); dJaw.scale.set(1, 0.45, 1.4);
+mesh(sph(0.03, 10, 8), dGold, 0, 0.0, 0.3, dHead, false);
+[-1, 1].forEach(sd => {
+  mesh(sph(0.04, 12, 10), new THREE.MeshStandardMaterial({ color: '#fff35c', emissive: '#ffcc00', emissiveIntensity: 0.8 }), sd * 0.085, 0.06, 0.1, dHead, false);
+  mesh(sph(0.018, 8, 6), mat('#140806'), sd * 0.095, 0.065, 0.135, dHead, false);
+  const horn = mesh(new THREE.ConeGeometry(0.025, 0.24, 8), dGold, sd * 0.07, 0.16, -0.08, dHead, false); horn.rotation.set(-1.0, 0, -sd * 0.3);
+  const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(sd * 0.06, -0.03, 0.26), new THREE.Vector3(sd * 0.2, 0.0, 0.2), new THREE.Vector3(sd * 0.32, -0.08, 0.02), new THREE.Vector3(sd * 0.42, -0.02, -0.15)]);
+  mesh(new THREE.TubeGeometry(curve, 16, 0.008, 5, false), dGold, 0, 0, 0, dHead, false);
+  for (let k = 0; k < 3; k++) { const m = mesh(new THREE.ConeGeometry(0.035, 0.16, 6), mat('#ff8a2a', { roughness: 0.6 }), sd * (0.08 + k * 0.03), 0.02 - k * 0.04, -0.14, dHead, false); m.rotation.set(-1.9, 0, sd * (0.6 + k * 0.2)); }
+});
+function dragonPath(s, t, out) {
+  const a = t * 0.9 - s * Math.PI * 2.6, rr = 0.62 + 0.08 * Math.sin(s * 9 + t * 2);
+  return out.set(C.x + Math.cos(a) * rr, DH - 0.45 + s * 0.9 + 0.06 * Math.sin(a * 2 + t), C.y + Math.sin(a) * rr);
+}
+const _dp = new THREE.Vector3(), _dq = new THREE.Vector3();
+function animDragon(t) {
+  for (let i = 0; i < DN; i++) { const s = 0.04 + i / (DN - 1) * 0.96; dragonPath(s, t, dSeg[i].position); dSeg[i].lookAt(dragonPath(s - 0.02, t, _dq)); }
+  dragonPath(0, t, dHead.position); dHead.lookAt(dragonPath(-0.03, t, _dp));
+  dJaw.position.y = -0.08 - 0.025 * (0.5 + 0.5 * Math.sin(t * 3));
+  pearl.rotation.set(0.3, t * 2.2, 0.15 * Math.sin(t)); pearl.position.y = DH + 0.05 * Math.sin(t * 2);
+  flames.forEach((f, k) => { f.rotation.set(t * (1 + k * 0.4) + k, t * 0.7 * (k % 2 ? -1 : 1), 0); f.position.y = pearl.position.y; });
+}
+
 // lounge: sofa, coffee table, foosball, coffee bar, lamp
 const sofaM = mat('#6658ad', { roughness: 0.85 });
 rbox(building, 2.6, 0.45, 1.0, 0.15, sofaM, 11, F0 + 0.35, 18.3);
@@ -920,7 +977,7 @@ function render(t) {
   if (!RM) {
     jets.forEach((j, k) => { j.scale.y = 0.8 + 0.25 * Math.sin(t * 3 + k); });
     jetTop.scale.y = 0.9 + 0.15 * Math.sin(t * 2.2);
-    holo.rotation.set(Math.PI / 2 + 0.3 * Math.sin(t), t * 0.8, 0); holo2.rotation.set(t * 1.2, 0.4, 0); holoCore.rotation.y = t * 1.5; holoCore.position.y = F0 + 1.6 + 0.06 * Math.sin(t * 2);
+    animDragon(t);
     fish.forEach((fi, k) => { const ph = t * (0.5 + k * 0.17) + k * 2; fi.position.x = 5.75 + Math.sin(ph) * 0.62; fi.rotation.y = Math.cos(ph) > 0 ? 0 : Math.PI; });
     screens.forEach((s, k) => { s.m.emissiveIntensity = 0.75 + 0.15 * Math.sin(t * 3 + k * 1.7); });
     traffic.forEach(c => { c.u += c.v * dt * (c.lane ? 1 : -1); const [x, y, r] = loopPos(c.lane ? c.u : -c.u, c.lane); c.g.position.set(x, 0, y); c.g.rotation.y = -r + (c.lane ? 0 : Math.PI); });

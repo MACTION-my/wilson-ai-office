@@ -1,7 +1,7 @@
 {
-  "company": "Wilson & Co.",
+  "company": "MACTION",
   "timezone": "Asia/Kuala_Lumpur",
-  "context": "Wilson & Co. 是一家社媒电商公司：通过 Facebook / Instagram / TikTok 内容和 Meta 广告获客，客户主要在 WhatsApp 上咨询、下单和售后，卖自有产品（例如护肤品「玫瑰精华液」）。老板是 Wilson，所有花钱、对外发布、群发的事都要他批准。",
+  "context": "MACTION（Maction Sdn Bhd，官网 www.maction.com.my，口号 MUST ACTION，品牌理念「连锁 | 绩效 | 资本」）是马来西亚首个连锁加盟与连锁发展平台（获 ASEAN RECORDS 认证），2019 年起服务创业者。业务：品牌咨询（品牌定位、市场定位、品牌打造）、商业咨询（连锁加盟体系与自动化系统搭建、商业策略、绩效考核、资本融资、法律与财务顾问、扩张方案），以及商业课程（企业培训、大师班、工作坊、加盟发展策略、领导力与企业管理课程、企业定制课程）。客户是想扩张、做连锁加盟、融资的马来西亚和东盟老板与创业者，覆盖餐饮、零售、美业、健身、科技等行业。获客主要靠 Facebook / Instagram / TikTok 内容和 Meta 广告，引导预约「免费咨询」和报名课程，客户多在 WhatsApp 上咨询跟进。老板是 Wilson，所有花钱、对外发布、群发的事都要他批准。",
   "agents": {
     "sasa": {
       "name": "Sasa",
@@ -685,7 +685,7 @@
           1
         ]
       ],
-      "prompt": "先上网搜索最近在 TikTok / Instagram Reels / Facebook 流行的短视频形式和话题（尤其是马来西亚、护肤和社媒电商相关），列出 3 个趋势并说明为什么火、附来源链接。然后为每个趋势写一条 15–30 秒、Wilson 可以自己跟着拍的脚本：镜头、台词、字幕、BGM 建议和拍摄小贴士。"
+      "prompt": "先上网搜索最近在 TikTok / Instagram Reels / Facebook 流行的短视频形式和话题（尤其是马来西亚、创业、连锁加盟和商业知识相关），列出 3 个趋势并说明为什么火、附来源链接。然后为每个趋势写一条 15–30 秒、Wilson 可以自己跟着拍的脚本：镜头、台词、字幕、BGM 建议和拍摄小贴士。"
     },
     {
       "key": "wawa_daily",
