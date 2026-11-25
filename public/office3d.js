@@ -1002,7 +1002,7 @@ function human(L) {
 const people = {};
 ALL.forEach(id => { const h = human({ ...LOOK[id], id }); h.root.scale.setScalar(id === 'wilson' ? 1.0 : 0.95); scene.add(h.root); people[id] = { ...h, yaw: 0, px: AG[id].pos.x, py: AG[id].pos.y, walk: 0 }; });
 /* ---------- AI-made 3D bodies (image → 3D), auto-rigged here so the same animation code drives them ---------- */
-const MODEL_IDS = ['wilson', 'sasa'], MODEL_V = 1, MODEL_H = 1.95;
+const MODEL_IDS = ['wilson', 'sasa', 'nana', 'mimi', 'kiki', 'lulu', 'bobo', 'wawa'], MODEL_V = 3, MODEL_H = 1.95;
 const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function rigModel(id, gltf, lm) {
   const src = []; gltf.scene.traverse(o => { if (o.isMesh) src.push(o); });
