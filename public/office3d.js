@@ -199,6 +199,68 @@ sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 10, far: 220 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
+/* ---------- sky life: sun, moon, stars, drifting skyClouds, flocks of birds ---------- */
+const SKYC = new THREE.Vector3(GX / 2, 0, GY / 2);
+const sunDir = new THREE.Vector3(40, 70, 25).normalize(), moonDir = new THREE.Vector3(-45, 55, -35).normalize();
+const haloTex = glowTex();
+const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(26, 24, 16), new THREE.MeshBasicMaterial({ color: '#fff3c4', fog: false, transparent: true }));
+sunDisc.position.copy(SKYC).addScaledVector(sunDir, 620); scene.add(sunDisc);
+const sunHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: '#ffe7a0', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+sunHalo.scale.setScalar(230); sunHalo.position.copy(sunDisc.position); scene.add(sunHalo);
+const moonTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#eef0f6'; g.fillRect(0, 0, w, h); seed = 31;
+  for (let k = 0; k < 26; k++) { const x = rnd() * w, y = rnd() * h, r = 6 + rnd() * 26; g.fillStyle = `rgba(150,158,180,${0.25 + rnd() * 0.35})`; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(x - r * 0.25, y - r * 0.25, r * 0.55, 0, Math.PI * 2); g.fill(); }
+});
+const moon = new THREE.Mesh(new THREE.SphereGeometry(18, 32, 24), new THREE.MeshBasicMaterial({ map: moonTex, fog: false, transparent: true }));
+moon.position.copy(SKYC).addScaledVector(moonDir, 600); scene.add(moon);
+const moonHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: '#a9c4ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+moonHalo.scale.setScalar(150); moonHalo.position.copy(moon.position); scene.add(moonHalo);
+seed = 77;
+const starPos = []; for (let i = 0; i < 1100; i++) { const a = rnd() * Math.PI * 2, e = 0.12 + rnd() * 1.4; starPos.push(SKYC.x + Math.cos(a) * Math.cos(e) * 820, Math.sin(e) * 820, SKYC.z + Math.sin(a) * Math.cos(e) * 820); }
+const stars = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3)), new THREE.PointsMaterial({ color: '#ffffff', size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+scene.add(stars);
+// skyClouds: puffy clusters that drift across and wrap around
+const cloudM = new THREE.MeshLambertMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.35, fog: false, transparent: true, opacity: 0.96 });
+const cloudGeo = new THREE.SphereGeometry(1, 16, 12);
+const skyClouds = Array.from({ length: 16 }, (_, i) => {
+  const g = new THREE.Group(), n = 5 + Math.floor(rnd() * 4), s = 7 + rnd() * 9;
+  for (let k = 0; k < n; k++) { const m = new THREE.Mesh(cloudGeo, cloudM); const u = k / (n - 1) - 0.5; m.position.set(u * s * 2.6, Math.cos(u * 3) * s * 0.35 + rnd() * s * 0.3, (rnd() - 0.5) * s * 0.9); m.scale.setScalar(s * (0.6 + 0.5 * Math.cos(u * 2.6)) * (0.8 + rnd() * 0.4)); m.scale.y *= 0.72; g.add(m); }
+  const a = rnd() * Math.PI * 2, r = 90 + rnd() * 260;
+  g.position.set(SKYC.x + Math.cos(a) * r, 75 + rnd() * 70, SKYC.z + Math.sin(a) * r); g.rotation.y = rnd() * 0.6;
+  scene.add(g); return { g, v: 2.5 + rnd() * 3 };
+});
+// birds: small flocks gliding in wide circles, flapping now and then
+const birdM = new THREE.MeshStandardMaterial({ color: '#2b2d3a', roughness: 0.8, side: THREE.DoubleSide });
+const wingGeo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -0.25, 0, 0, 0.3, 1.0, 0.0, -0.1], 3)); wingGeo.computeVertexNormals();
+function bird() {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 6), birdM); b.rotation.x = Math.PI / 2; g.add(b);
+  const wings = [-1, 1].map(s => { const w = new THREE.Mesh(wingGeo, birdM); w.scale.x = s; g.add(w); return w; });
+  g.scale.setScalar(1.3); return { g, wings, ph: rnd() * 6 };
+}
+const flocks = [[55, 26, 0.16], [85, 34, -0.11], [120, 42, 0.08], [70, 30, -0.14]].map(([r, h, sp], fi) => {
+  const fg = new THREE.Group(); scene.add(fg);
+  const bs = Array.from({ length: 5 + fi % 2 * 2 }, (_, i) => { const o = bird(); const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; o.off = new THREE.Vector3(side * row * 1.6, (rnd() - 0.5) * 0.6, -row * 1.8); o.g.position.copy(o.off); fg.add(o.g); return o; });
+  return { fg, bs, r, h, sp, a0: fi * 1.7 };
+});
+function animSky(t, dt, N) {
+  const day = WT.d + WT.k * 0.85, dusk = WT.k;
+  sunDisc.material.opacity = day; sunHalo.material.opacity = day * 0.9; sunDisc.visible = sunHalo.visible = day > 0.02;
+  sunDisc.material.color.set('#fff3c4').lerp(tmpB.set('#ff8a3c'), dusk); sunHalo.material.color.set('#ffe7a0').lerp(tmpB.set('#ff7a3c'), dusk);
+  moon.material.opacity = N; moonHalo.material.opacity = N * 0.6; moon.visible = moonHalo.visible = N > 0.02;
+  stars.material.opacity = Math.max(0, N - 0.15) * (0.75 + 0.25 * Math.sin(t * 1.7));
+  cloudM.color.set('#ffffff').lerp(tmpB.set('#ffc4b4'), dusk).lerp(tmpC.set('#4a5478'), WT.n);
+  cloudM.emissive.copy(cloudM.color); cloudM.emissiveIntensity = 0.35 - 0.2 * WT.n;
+  skyClouds.forEach(c => { c.g.position.x += c.v * dt; if (c.g.position.x > SKYC.x + 420) c.g.position.x = SKYC.x - 420; });
+  const birdsOn = WT.n < 0.7;
+  flocks.forEach(f => {
+    f.fg.visible = birdsOn; if (!birdsOn) return;
+    const a = f.a0 + t * f.sp, x = SKYC.x + Math.cos(a) * f.r, z = SKYC.z + Math.sin(a) * f.r, y = f.h + Math.sin(t * 0.5 + f.a0) * 3;
+    f.fg.position.set(x, y, z);
+    f.fg.lookAt(SKYC.x + Math.cos(a + Math.sign(f.sp) * 0.1) * f.r, y, SKYC.z + Math.sin(a + Math.sign(f.sp) * 0.1) * f.r);
+    f.bs.forEach(b => { const flap = (Math.sin(t * 2 + b.ph) > -0.2) ? Math.sin(t * 11 + b.ph) * 0.6 : 0.05; b.wings[0].rotation.z = -flap; b.wings[1].rotation.z = flap; });
+  });
+}
 const roomLights = [[7, 7], [19, 7], [7, 16], [19, 16]].map(([x, y]) => { const l = new THREE.PointLight('#ffd9a8', 0, 22, 1.6); l.position.set(x, F0 + 3.8, y); scene.add(l); return l; });
 
 /* ---------- the city ---------- */
@@ -1028,6 +1090,7 @@ function render(t) {
   roomLights.forEach(l => { l.intensity = 30 * N; }); planetM.emissiveIntensity = 0.25 + 1.2 * N;
   [podGlass, towGlass, bandM, ...cityMats].forEach(m => { m.emissiveIntensity = 1.3 * N; }); tileGlass.emissiveIntensity = 0.5 * N; ledM.emissiveIntensity = 0.5 + 2.2 * N; orangeM.emissiveIntensity = 0.1 + 0.4 * N;
   signMats.forEach(m => { m.emissiveIntensity = 0.12 + 0.6 * N; });
+  animSky(t, dt, N);
   bulbM.emissiveIntensity = 0.2 + 2.5 * N;
   glows.forEach(g => { g.material.opacity = 0.15 + 0.75 * N; });
   headM.emissiveIntensity = 0.3 + 2 * N; tailM.emissiveIntensity = 0.5 + 1.5 * N;
