@@ -1001,6 +1001,77 @@ function human(L) {
 }
 const people = {};
 ALL.forEach(id => { const h = human({ ...LOOK[id], id }); h.root.scale.setScalar(id === 'wilson' ? 1.0 : 0.95); scene.add(h.root); people[id] = { ...h, yaw: 0, px: AG[id].pos.x, py: AG[id].pos.y, walk: 0 }; });
+/* ---------- AI-made 3D bodies (image → 3D), auto-rigged here so the same animation code drives them ---------- */
+const MODEL_IDS = ['wilson', 'sasa'], MODEL_V = 1, MODEL_H = 1.95;
+const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function rigModel(id, gltf, lm) {
+  const src = []; gltf.scene.traverse(o => { if (o.isMesh) src.push(o); });
+  const geo = src[0].geometry.clone(); const S = MODEL_H;
+  const pos = geo.attributes.position, n = pos.count;
+  const torsoAt = y => { const k = Math.max(0, Math.min(63, Math.round(y * 63))); return lm.torso[k]; };
+  const hip = Math.max(torsoAt(lm.crotch + 0.03), 0.06), neck = Math.max(0.7, Math.min(0.84, lm.neck)), shoulderY = neck - 0.04;
+  // bones: 0 spine, 1 leg L, 2 leg R, 3 arm L, 4 arm R, 5 head
+  const idx = new Uint16Array(n * 4), wt = new Float32Array(n * 4);
+  const hand = [[0, 0, 0, 0], [0, 0, 0, 0]];
+  let shX = 0, shN = 0;
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), y = pos.getY(i), ax = Math.abs(x), side = x < 0 ? 0 : 1;
+    const lim = y >= lm.crotch ? torsoAt(y) : hip * 1.05;
+    let b = 0, w = 0;
+    const armW = y > lm.crotch - 0.12 && y < shoulderY + 0.02 ? ss(lim + 0.004, lim + 0.03, ax) : 0;
+    const legW = ss(lm.crotch + 0.05, lm.crotch - 0.03, y) * (1 - armW);
+    const headW = ss(neck - 0.025, neck + 0.02, y);
+    if (armW > 0.01) { b = 3 + side; w = armW; if (y < lm.crotch + 0.1) { hand[side][0] += x; hand[side][1] += y; hand[side][2] += pos.getZ(i); hand[side][3]++; } }
+    else if (legW > 0.01) { b = 1 + side; w = legW; }
+    else if (headW > 0.01) { b = 5; w = headW; }
+    if (y > shoulderY - 0.03 && y < shoulderY + 0.03 && ax > torsoAt(shoulderY) * 0.7) { shX += ax; shN++; }
+    idx[i * 4] = b; wt[i * 4] = w; idx[i * 4 + 1] = 0; wt[i * 4 + 1] = 1 - w;
+    pos.setXYZ(i, x * S, y * S, pos.getZ(i) * S);
+  }
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(idx, 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(wt, 4));
+  // smooth normals: average face normals of vertices that share a position (the mesh is split at the UV seam)
+  { const nn = new Float32Array(n * 3), key = new Map(), pa = new THREE.Vector3(), pb = new THREE.Vector3(), pc = new THREE.Vector3(), fn = new THREE.Vector3();
+    const kOf = i => Math.round(pos.getX(i) * 2000) + ',' + Math.round(pos.getY(i) * 2000) + ',' + Math.round(pos.getZ(i) * 2000);
+    const acc = new Map();
+    for (let i = 0; i < n; i += 3) { pa.fromBufferAttribute(pos, i); pb.fromBufferAttribute(pos, i + 1); pc.fromBufferAttribute(pos, i + 2); fn.subVectors(pc, pb).cross(pa.clone().sub(pb));
+      for (let k = 0; k < 3; k++) { const kk = kOf(i + k); const v = acc.get(kk) || [0, 0, 0]; v[0] += fn.x; v[1] += fn.y; v[2] += fn.z; acc.set(kk, v); } }
+    for (let i = 0; i < n; i++) { const v = acc.get(kOf(i)); const l = Math.hypot(v[0], v[1], v[2]) || 1; nn[i * 3] = v[0] / l; nn[i * 3 + 1] = v[1] / l; nn[i * 3 + 2] = v[2] / l; }
+    geo.setAttribute('normal', new THREE.BufferAttribute(nn, 3)); }
+  geo.computeBoundingSphere();
+  const shoulderX = (shN ? shX / shN : torsoAt(shoulderY)) * S;
+  const bone = (x, y, z, parent) => { const b = new THREE.Bone(); b.position.set(x, y, z); if (parent) parent.add(b); return b; };
+  const spine = bone(0, 0, 0);
+  const legs = [-1, 1].map(s => bone(s * hip * 0.5 * S, lm.crotch * S, 0, spine));
+  const arms = [-1, 1].map(s => bone(s * shoulderX * 0.85, shoulderY * S, 0, spine));
+  const head = bone(0, neck * S, 0, spine);
+  const m0 = src[0].material, map = m0.map;
+  const mat = new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.22, roughness: 0.72, metalness: 0 });
+  const sm = new THREE.SkinnedMesh(geo, mat); sm.castShadow = true; sm.receiveShadow = true; sm.frustumCulled = false;
+  sm.add(spine); sm.bind(new THREE.Skeleton([spine, legs[0], legs[1], arms[0], arms[1], head]));
+  const body = new THREE.Group(); body.add(sm);
+  // phone and cup sit in the hands
+  const handOf = k => hand[k][3] ? new THREE.Vector3(hand[k][0] / hand[k][3] * S, hand[k][1] / hand[k][3] * S, hand[k][2] / hand[k][3] * S).sub(arms[k].position) : new THREE.Vector3(0, -0.45, 0);
+  const phone = mesh(new THREE.BoxGeometry(0.08, 0.15, 0.015), mat_('#1d1d25', { emissive: '#3ee6ff', emissiveIntensity: 0.4 }), 0, 0, 0, arms[1], false); phone.position.copy(handOf(1)).add(new THREE.Vector3(0, 0.02, 0.08));
+  const cup = mesh(cyl(0.05, 0.04, 0.1, 10), mat_('#ffffff'), 0, 0, 0, arms[0], false); cup.position.copy(handOf(0)).add(new THREE.Vector3(0, 0.04, 0.06));
+  return { body, legs, arms, head, torso: new THREE.Object3D(), eyes: [], phone, cup };
+}
+const mat_ = (c, o) => mat(c, o);
+function loadModels() {
+  import('three/addons/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
+    const loader = new GLTFLoader();
+    MODEL_IDS.forEach(id => {
+      Promise.all([fetch('models/' + id + '.json?v=' + MODEL_V).then(r => r.json()), new Promise((ok, no) => loader.load('models/' + id + '.glb?v=' + MODEL_V, ok, undefined, no))])
+        .then(([lm, gltf]) => {
+          const p = people[id]; if (!p) return;
+          const r = rigModel(id, gltf, lm);
+          p.root.remove(p.body); p.root.add(r.body);
+          Object.assign(p, r);
+        }).catch(e => console.warn('model', id, e));
+    });
+  });
+}
+loadModels();
 
 /* ---------- pets ---------- */
 function bichon(acc) {
