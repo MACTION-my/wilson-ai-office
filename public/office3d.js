@@ -747,8 +747,8 @@ const LOOK = {
   mimi: { sex: 'f', hair: 'wavy', hairC: '#8a5a38', skin: '#fcdfcb', iris: '#6e4628', top: '#f7941d', pants: '#3b5a86' },
   kiki: { sex: 'f', hair: 'wavy', hairC: '#3e2a22', skin: '#f7d2b8', iris: '#4e301c', top: '#f4c430', cardigan: true, pants: '#2c3550', headset: true },
   lulu: { sex: 'f', hair: 'pony', hairC: '#6a4630', skin: '#fad9c4', iris: '#6b4226', top: '#ff7aa8', skirt: '#2a2f55', beret: '#ff6f91' },
-  bobo: { sex: 'm', hair: 'tousled', hairC: '#6b4426', skin: '#f0c6a6', iris: '#4a2e1a', top: '#ffffff', jacket: '#9a2b2b', pants: '#30343f', beard: true },
-  wawa: { sex: 'm', hair: 'spiky', hairC: '#1e1a1c', skin: '#ecbc98', iris: '#3a2416', top: '#ffffff', jacket: '#3f6fb5', pants: '#2b3550', glasses: true },
+  bobo: { sex: 'f', hair: 'wavy', hairC: '#8a3f22', skin: '#fad9c4', iris: '#5c3820', top: '#ffffff', jacket: '#9a2b2b', pants: '#30343f' },
+  wawa: { sex: 'f', hair: 'long', hairC: '#1e1a1c', skin: '#f7d2b8', iris: '#3a2416', top: '#ffffff', jacket: '#3f6fb5', pants: '#2b3550', glasses: true },
 };
 const FACE = { R: 0.3, t0: Math.PI * 0.3, tl: Math.PI * 0.58, pl: 1.9 };
 function faceTex(L) {
