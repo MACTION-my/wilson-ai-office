@@ -19,6 +19,7 @@ const REGION = "us-central1"; // same location as the Firestore database (nam5)
 const MODEL = "claude-opus-5-5";
 const DEPTS = ["nana", "mimi", "kiki", "lulu", "bobo", "wawa"];
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const META_TOKEN = defineSecret("META_TOKEN");
 
 setGlobalOptions({ region: REGION, maxInstances: 10 });
 initializeApp();
@@ -126,6 +127,104 @@ async function makeImages(ref, prompts) {
   return { images, errors };
 }
 
+/* ---------- Meta: Facebook pages + Ads Manager ---------- */
+const GRAPH = "https://graph.facebook.com/v23.0";
+const PAGES = Object.fromEntries(((ORG.meta && ORG.meta.pages) || []).map((p) => [p.key, p]));
+function metaToken() { try { return (META_TOKEN.value() || "").trim() || null; } catch { return null; } }
+async function graph(path, { token, method = "GET", params = {} } = {}) {
+  const url = new URL(GRAPH + path), opts = { method };
+  const all = { ...params, access_token: token };
+  const enc = (v) => (typeof v === "object" ? JSON.stringify(v) : String(v));
+  if (method === "GET") for (const [k, v] of Object.entries(all)) url.searchParams.set(k, enc(v));
+  else { const body = new URLSearchParams(); for (const [k, v] of Object.entries(all)) body.set(k, enc(v)); opts.body = body; }
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(`Meta：${(j.error && (j.error.error_user_msg || j.error.message)) || r.status}`.slice(0, 300));
+  return j;
+}
+const pageTokens = {};
+async function pageToken(pageId) {
+  if (!pageTokens[pageId]) pageTokens[pageId] = (await graph(`/${pageId}`, { token: metaToken(), params: { fields: "access_token" } })).access_token;
+  return pageTokens[pageId];
+}
+async function recentPosts(pageId) {
+  try {
+    const j = await graph(`/${pageId}/posts`, { token: await pageToken(pageId), params: { fields: "message,created_time", limit: 6 } });
+    return (j.data || []).filter((p) => p.message).map((p) => `- ${p.message.replace(/\s+/g, " ").slice(0, 280)}`).join("\n");
+  } catch (e) { logger.warn("recent posts", e.message); return ""; }
+}
+async function publishPost(page, text, imageUrl) {
+  const tok = await pageToken(page.pageId);
+  const j = imageUrl
+    ? await graph(`/${page.pageId}/photos`, { token: tok, method: "POST", params: { url: imageUrl, caption: text } })
+    : await graph(`/${page.pageId}/feed`, { token: tok, method: "POST", params: { message: text } });
+  const id = j.post_id || j.id;
+  return { id, url: id.includes("_") ? `https://www.facebook.com/${id.replace("_", "/posts/")}` : `https://www.facebook.com/${id}` };
+}
+async function createPausedAd(page, ad, imageUrl, title) {
+  const tok = metaToken(), act = `act_${page.adAccount}`;
+  const acct = await graph(`/${act}`, { token: tok, params: { fields: "currency" } });
+  const minor = ["JPY", "KRW", "IDR", "VND", "CLP", "COP", "TWD", "HUF", "ISK"].includes(acct.currency) ? 1 : 100;
+  const budget = Math.min(500, Math.max(10, Number(ad.daily_budget) || 30));
+  const age = (v, d) => Math.min(65, Math.max(18, Number(v) || d));
+  const name = `AI Office · ${String(ad.name || title).slice(0, 60)}`;
+  const link = ad.link || page.link || `https://www.facebook.com/${page.pageId}`;
+  const cta = ["LEARN_MORE", "SHOP_NOW", "SIGN_UP", "CONTACT_US"].includes(ad.cta) ? ad.cta : "LEARN_MORE";
+  const camp = await graph(`/${act}/campaigns`, { token: tok, method: "POST", params: { name, objective: "OUTCOME_TRAFFIC", status: "PAUSED", special_ad_categories: [], is_adset_budget_sharing_enabled: false } });
+  const set = await graph(`/${act}/adsets`, { token: tok, method: "POST", params: {
+    name: name + " · 受众", campaign_id: camp.id, daily_budget: Math.round(budget * minor), billing_event: "IMPRESSIONS", optimization_goal: "LINK_CLICKS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP", status: "PAUSED",
+    targeting: { geo_locations: { countries: (ad.countries && ad.countries.length) ? ad.countries : ["MY"] }, age_min: age(ad.age_min, 18), age_max: age(ad.age_max, 65), targeting_automation: { advantage_audience: 0 } } } });
+  const bytes = Buffer.from(await (await fetch(imageUrl)).arrayBuffer()).toString("base64");
+  const imgs = await graph(`/${act}/adimages`, { token: tok, method: "POST", params: { bytes } });
+  const hash = Object.values(imgs.images || {})[0]?.hash;
+  if (!hash) throw new Error("广告图上传失败");
+  const creative = await graph(`/${act}/adcreatives`, { token: tok, method: "POST", params: { name: name + " · 素材",
+    object_story_spec: { page_id: page.pageId, link_data: { image_hash: hash, link, message: ad.primary_text || "", name: ad.headline || "", description: ad.description || "", call_to_action: { type: cta, value: { link } } } } } });
+  const adObj = await graph(`/${act}/ads`, { token: tok, method: "POST", params: { name, adset_id: set.id, creative: { creative_id: creative.id }, status: "PAUSED" } });
+  return { campaignId: camp.id, adId: adObj.id, budget, currency: acct.currency, url: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${page.adAccount}&selected_campaign_ids=${camp.id}` };
+}
+function takeBlocks(text) {
+  let post = null, ad = null;
+  text = text.replace(/\[\[POST\]\]([\s\S]*?)\[\[\/POST\]\]/, (m, p) => { post = p.trim(); return `\n\n**要发布的帖子：**\n\n${p.trim()}\n`; });
+  text = text.replace(/\[\[AD\]\]([\s\S]*?)\[\[\/AD\]\]/, (m, p) => {
+    try { ad = JSON.parse(p.trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim()); } catch { ad = null; }
+    return ad ? `\n\n**广告设置（批准后在广告帐户建好，先暂停）：** 每日预算 RM ${ad.daily_budget || "?"}，年龄 ${ad.age_min || 18}–${ad.age_max || 65}，地区 ${(ad.countries || ["MY"]).join("/")}，按钮 ${ad.cta || "LEARN_MORE"}${ad.link ? "，链接 " + ad.link : ""}\n` : "";
+  });
+  return { text: text.trim(), post, ad };
+}
+async function pagePrompt(id, page) {
+  let p = `\n\n这次是给 Facebook 专页「${page.name}」做的。${page.about ? "专页定位：" + page.about : ""}`;
+  const posts = metaToken() ? await recentPosts(page.pageId) : "";
+  if (posts) p += `\n这个专页最近的帖子（参考它的定位和语气，不要重复）：\n${posts}`;
+  if (id === "mimi") p += "\n\n把最终要发出去的帖子正文放在 [[POST]] 和 [[/POST]] 之间（纯文本，不用 Markdown，可以有 emoji 和话题标签），再写一张配图的 [[IMAGE: ...]]。";
+  if (id === "nana" && page.adAccount) p += '\n\n最后把推荐的那一版广告设置放在 [[AD]] 和 [[/AD]] 之间，内容是 JSON：{"name":"广告名","primary_text":"主文案","headline":"标题（40 字内）","description":"描述","cta":"LEARN_MORE / SHOP_NOW / SIGN_UP / CONTACT_US 选一个","link":"落地页链接，不知道就留空","daily_budget":每日预算的马币数字,"age_min":18,"age_max":65,"countries":["MY"]}。再写一张广告图的 [[IMAGE: ...]]。';
+  if (id === "nana" && !page.adAccount) p += "\n\n注意：这个专页不投广告，只写内容建议，不要写 [[AD]]。";
+  return p;
+}
+async function runMetaActions(ref, t) {
+  const page = PAGES[t.page];
+  if (!page || (!t.post && !t.ad)) return;
+  const outs = [], extra = {};
+  if (!metaToken()) {
+    outs.push({ who: "Meta", text: "还没接上 Meta，所以没有自动发布 / 建广告。内容在交付里，可以先手动用。" });
+  } else {
+    if (t.post) {
+      try { const r = await publishPost(page, t.post, (t.images || [])[0]?.url); extra.fb = r; outs.push({ who: `已发布到 ${page.name}`, text: r.url }); await ev(ref.id, "mimi", "fb_published", { page: page.name }); }
+      catch (e) { outs.push({ who: "FB 发布失败", text: String(e.message || e) }); logger.error("publish", e); }
+    }
+    if (t.ad) {
+      if (!page.adAccount) outs.push({ who: "广告", text: `${page.name} 不投广告，已跳过。` });
+      else if (!(t.images || [])[0]) outs.push({ who: "广告没建", text: "没有广告图，先让 Lulu 补图再建广告。" });
+      else {
+        try { const r = await createPausedAd(page, t.ad, t.images[0].url, t.title); extra.metaAd = r; outs.push({ who: `广告已建好（暂停中）· ${page.adAccountName || page.adAccount}`, text: `每日预算 ${r.currency} ${r.budget}，去 Ads Manager 确认后再开启：${r.url}` }); await ev(ref.id, "nana", "ad_created", { page: page.name }); }
+        catch (e) { outs.push({ who: "建广告失败", text: String(e.message || e) }); logger.error("ad", e); }
+      }
+    }
+  }
+  if (outs.length) await ref.update({ ...extra, outs: FieldValue.arrayUnion(...outs) });
+}
+
 /* ---------- helpers ---------- */
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function ev(taskId, agent, event, extra = {}) {
@@ -154,7 +253,7 @@ async function taskDigest(days) {
   }).join("\n");
 }
 async function finish(ref, t, who, summary, body, extra = {}) {
-  const needAp = await needsApproval(t);
+  const needAp = (extra.post || extra.ad) ? true : await needsApproval(t);
   const name = who === "all" ? "Sasa" : ORG.agents[who].name;
   if (needAp) {
     await ref.update({ status: "review", stage: "review", needAp, result: body, summary, ...extra, outs: FieldValue.arrayUnion({ who: name, text: summary }) });
@@ -176,6 +275,8 @@ async function runOne(ref, t) {
   let prompt = auto ? auto.prompt : `Wilson 交代给你的任务：${t.title}`;
   if (auto?.data === "tasks_1d") prompt += "\n\n任务记录：\n" + (await taskDigest(1));
   if (auto?.data === "tasks_7d") prompt += "\n\n任务记录：\n" + (await taskDigest(7));
+  const pageKey = t.page || (auto && auto.page) || null, page = pageKey ? PAGES[pageKey] : null;
+  if (page) prompt += await pagePrompt(id, page);
   // Claude does the real work during the "main" step; the other steps are short progress markers for the page.
   const callAt = steps.length > 2 ? 1 : steps.length - 1;
   let text = null;
@@ -187,9 +288,11 @@ async function runOne(ref, t) {
   }
   const { clean, prompts } = takeImages(text);
   const { images, errors } = await makeImages(ref, prompts);
-  const { summary, body } = split(clean);
+  const blocks = takeBlocks(clean);
+  const { summary, body } = split(blocks.text);
   await ref.update({ prog: steps.length + 1 });
-  await finish(ref, t, id, summary, body + (errors.length ? `\n\n（配图有 ${errors.length} 张没生成成功：${errors[0]}）` : ""), images.length ? { images } : {});
+  const extra = { ...(images.length ? { images } : {}), ...(page ? { page: page.key } : {}), ...(page && blocks.post ? { post: blocks.post } : {}), ...(page && blocks.ad && page.adAccount ? { ad: blocks.ad } : {}) };
+  await finish(ref, t, id, summary, body + (errors.length ? `\n\n（配图有 ${errors.length} 张没生成成功：${errors[0]}）` : ""), extra);
 }
 
 /* ---------- whole company: Sasa plans, departments work in parallel, Sasa merges ---------- */
@@ -236,7 +339,7 @@ async function runTeam(ref, t) {
 
 /* ---------- triggers ---------- */
 export const onTaskCreated = onDocumentCreated(
-  { document: "tasks/{id}", secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 540, memory: "512MiB" },
+  { document: "tasks/{id}", secrets: [ANTHROPIC_API_KEY, META_TOKEN], timeoutSeconds: 540, memory: "512MiB" },
   async (event) => {
     const ref = event.data.ref, t = event.data.data();
     if (t.status !== "queued") return;
@@ -252,7 +355,7 @@ export const onTaskCreated = onDocumentCreated(
   });
 
 export const onTaskDecision = onDocumentUpdated(
-  { document: "tasks/{id}", secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 540, memory: "512MiB" },
+  { document: "tasks/{id}", secrets: [ANTHROPIC_API_KEY, META_TOKEN], timeoutSeconds: 540, memory: "512MiB" },
   async (event) => {
     const before = event.data.before.data(), t = event.data.after.data(), ref = event.data.after.ref;
     if (before.status !== "review" || before.decision || !t.decision) return;
@@ -262,15 +365,18 @@ export const onTaskDecision = onDocumentUpdated(
         await ref.update({ status: "done", stage: "done", decision: FieldValue.delete(), decisionNote: FieldValue.delete(), finishedAt: FieldValue.serverTimestamp(),
           prog: t.total || 1, outs: FieldValue.arrayUnion({ who: "Wilson 已批准", text: t.summary || t.title, final: true }) });
         await ev(ref.id, "wilson", "approved", { task: t.title });
+        await runMetaActions(ref, t);
         return;
       }
       const note = (t.decisionNote || "").trim() || "请再完善一下，写得更具体、更可执行。";
       await ref.update({ status: "revising", stage: "revise", decision: FieldValue.delete(), decisionNote: FieldValue.delete() });
       await ev(ref.id, "wilson", "revise", { to: who, note });
       const text = await ask(systemFor(who),
-        `任务：${t.title}\n\n你之前交的版本：\n${t.result || ""}\n\nWilson 的修改意见：${note}\n\n请按意见修改后重新交付完整版本。`);
-      const { summary, body } = split(text);
+        `任务：${t.title}\n\n你之前交的版本：\n${t.result || ""}\n\nWilson 的修改意见：${note}\n\n请按意见修改后重新交付完整版本。${t.page && PAGES[t.page] ? await pagePrompt(who, PAGES[t.page]) : ""}`);
+      const blocks = takeBlocks(takeImages(text).clean);
+      const { summary, body } = split(blocks.text);
       await ref.update({ status: "review", stage: "review", result: body, summary,
+        ...(blocks.post ? { post: blocks.post } : {}), ...(blocks.ad ? { ad: blocks.ad } : {}),
         outs: FieldValue.arrayUnion({ who: ORG.agents[who].name, text: "已按意见修改：" + summary }) });
       await ev(ref.id, who, "review_requested", { task: t.title, revised: true });
     } catch (e) {

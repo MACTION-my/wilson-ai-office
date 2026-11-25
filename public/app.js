@@ -70,7 +70,7 @@ function subscribe(isOwner) {
 }
 
 window.DB = {
-  createTask: (title, who) => addDoc(collection(db, "tasks"), { title, who, auto: false, status: "queued", createdBy: auth.currentUser.uid, createdAt: serverTimestamp() }),
+  createTask: (title, who, page) => addDoc(collection(db, "tasks"), { title, who, auto: false, status: "queued", createdBy: auth.currentUser.uid, createdAt: serverTimestamp(), ...(page ? { page } : {}) }),
   decide: (id, ok, note) => updateDoc(doc(db, "tasks", id), { decision: ok ? "approve" : "revise", decisionNote: note || "", decidedAt: serverTimestamp() }),
   setAuto: (key, on) => setDoc(doc(db, "automations", key), { on }, { merge: true }),
   runAuto: (key) => setDoc(doc(db, "automations", key), { runNow: true }, { merge: true }),

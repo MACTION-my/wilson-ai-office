@@ -26,7 +26,7 @@ function renderTasks(){
     const [lab,sc] = TS[t.status] || TS.queued, pct = Math.round((t.prog||0)/(t.total||1)*100), open = t.open ?? (t.status!=='done' || t===lastDone);
     const outs = t.outs || [], fin = outs.filter(o=>o.final), rest = outs.filter(o=>!o.final);
     return `<article class="task${t.status==='review'?' rv':''}" style="--c:${whoColor(t)}">
-      <div class="th"><span class="tw">${esc(whoName(t))}</span>${t.needAp!=null?`<span class="tag">${t.needAp?'需审批':'直接完成'}</span>`:''}${t.qa?`<span class="tag ${t.qa.ok?'qa-ok':'qa-bad'}" title="${esc(t.qa.note||'')}">${t.qa.ok?'Wawa 验收合格':'Wawa：需改进'}</span>`:''}<span class="pill" style="--pc:${sc}">${lab}</span></div>
+      <div class="th"><span class="tw">${esc(whoName(t))}</span>${t.needAp!=null?`<span class="tag">${t.needAp?'需审批':'直接完成'}</span>`:''}${t.page && ORG.meta ? `<span class="tag">${esc((ORG.meta.pages.find(p=>p.key===t.page)||{}).name||t.page)}</span>`:''}${t.qa?`<span class="tag ${t.qa.ok?'qa-ok':'qa-bad'}" title="${esc(t.qa.note||'')}">${t.qa.ok?'Wawa 验收合格':'Wawa：需改进'}</span>`:''}<span class="pill" style="--pc:${sc}">${lab}</span></div>
       <div class="tt">${esc(t.title)}${t.auto && AUTO_BY[t.autoKey]?` <span class="tag">${esc(AUTO_BY[t.autoKey].cad)}</span>`:''}</div>
       <div class="bar"><i style="width:${t.status==='done'?100:pct}%"></i></div>
       <div class="tm"><span>${hmOf(tsMs(t.createdAt))} ${t.auto?'自动触发':'派出'}${t.finishedAt?` · ${hmOf(tsMs(t.finishedAt))} ${t.status==='failed'?'停止':'完成'}`:''}</span><span>${t.status==='done'?100:pct}%</span></div>
@@ -34,7 +34,7 @@ function renderTasks(){
       ${t.status==='review'&&session.isOwner?`<div class="rvb"><button type="button" class="ap" data-ap="${t.id}">批准 ✓</button><button type="button" data-rv="${t.id}">退回修改</button></div>`:''}
       ${outs.length?`<details data-id="${t.id}"${open?' open':''}><summary>交付物（${outs.length}）</summary><div class="outs">${[...fin,...rest].map(o=>`<div class="out${o.final?' final':''}" style="--c:${o.final?'#ffd166':(AG[TEAM.find(x=>AG[x].name===o.who)]||{}).color||'#9d99c9'}"><i></i><div><b>${esc(o.who)}</b>${esc(o.text)}</div></div>`).join('')}</div></details>`:''}
       ${(t.images||[]).length?`<div class="timgs">${(t.images).map(im=>`<a href="${esc(im.url)}" target="_blank" rel="noopener"><img src="${esc(im.url)}" alt="AI 配图：${esc((im.prompt||'').slice(0,80))}" loading="lazy"></a>`).join('')}</div>`:''}
-      <div class="dbtns">${t.result?`<button type="button" class="dbtn ghost" data-doc="${t.id}">查看完整交付</button>`:''}${t.who==='kiki'&&t.result?`<a class="dbtn wa" href="https://wa.me/?text=${encodeURIComponent(t.result.slice(0,3500))}" target="_blank" rel="noopener">用 WhatsApp 转发</a>`:''}</div>
+      <div class="dbtns">${t.fb&&t.fb.url?`<a class="dbtn fbl" href="${esc(t.fb.url)}" target="_blank" rel="noopener">看 FB 帖子</a>`:''}${t.metaAd&&t.metaAd.url?`<a class="dbtn fbl" href="${esc(t.metaAd.url)}" target="_blank" rel="noopener">在 Ads Manager 打开</a>`:''}${t.result?`<button type="button" class="dbtn ghost" data-doc="${t.id}">查看完整交付</button>`:''}${t.who==='kiki'&&t.result?`<a class="dbtn wa" href="https://wa.me/?text=${encodeURIComponent(t.result.slice(0,3500))}" target="_blank" rel="noopener">用 WhatsApp 转发</a>`:''}</div>
     </article>`;
   }).join('');
 }

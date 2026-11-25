@@ -29,7 +29,8 @@ service cloud.firestore {
     match /tasks/{id} {
       allow read: if isMember();
       allow create: if isMember()
-        && request.resource.data.keys().hasOnly(['title', 'who', 'auto', 'status', 'createdBy', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['title', 'who', 'auto', 'status', 'createdBy', 'createdAt', 'page'])
+        && (!('page' in request.resource.data) || request.resource.data.page in ['maction', 'academy', 'pinyu', 'jacky'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 2000
         && request.resource.data.who in staff()

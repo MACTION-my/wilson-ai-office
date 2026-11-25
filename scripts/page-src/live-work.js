@@ -247,6 +247,7 @@ function renderWho(){
 whoEl.addEventListener('click', e => {const b = e.target.closest('button'); if(b) selectWho(b.dataset.who)});
 function selectWho(id){
   assignee = id; renderWho(); renderPresets();
+  $('#pagerow').hidden = !['mimi','nana','lulu'].includes(id);
   $('#tasklb').textContent = id==='all' ? 'Wilson，今天想让团队做什么？' : `Wilson，要 ${AG[id].name}（${AG[id].dept} · ${AG[id].cn}）做什么？`;
   taskEl.placeholder = id==='all' ? '例如：下个月办一场会员答谢直播' : `例如：${EXAMPLES[id][0]}`;
 }
@@ -268,7 +269,8 @@ goEl.addEventListener('click', async () => {
   if(!window.DB){toast('还没连上数据库，请稍等'); return}
   const at = parseAt(v);
   goEl.disabled = true;
-  try{await window.DB.createTask(at ? at.text : v, at ? at.who : assignee); taskEl.value = ''; toast('已派出')}
+  const who = at ? at.who : assignee, page = ['mimi','nana','lulu'].includes(who) ? $('#pagesel').value || null : null;
+  try{await window.DB.createTask(at ? at.text : v, who, page); taskEl.value = ''; toast('已派出')}
   catch(e){toast('派任务失败：'+e.message)}
   goEl.disabled = false;
 });
@@ -292,6 +294,7 @@ cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x
 cv.addEventListener('mouseleave',()=>{mouse=null});
 
 ALL.forEach(id=>{renderCard(id); renderSpark(id)});
+$('#pagesel').innerHTML = '<option value="">不指定专页</option>' + ((ORG.meta && ORG.meta.pages) || []).map(p => `<option value="${p.key}">${esc(p.name)}${p.adAccount ? '' : '（不投广告）'}</option>`).join('');
 renderWho(); renderPresets(); renderTasks(); renderFocus(); updateQueue(); renderStats();
 buildFurniture();
 resize();

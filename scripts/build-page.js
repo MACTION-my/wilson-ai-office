@@ -65,6 +65,7 @@ rep(".rdf .go{width:auto;padding:8px 16px}", `.rdf .go{width:auto;padding:8px 16
 .timgs.big:empty{display:none}
 .timgs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;transition:transform .2s}
 .timgs a:hover img{transform:scale(1.03)}
+.dbtn.fbl{display:inline-flex;align-items:center;text-decoration:none;background:#1877f2;border-color:#1877f2;color:#fff;font-weight:600}
 .dbtn.wa{display:inline-flex;align-items:center;text-decoration:none;background:#25d366;border-color:#25d366;color:#04200f;font-weight:600}
 .dbtn.wa:hover{filter:brightness(1.06);background:#25d366}
 .tag.qa-ok{background:rgba(52,211,153,.16);color:var(--ok)}

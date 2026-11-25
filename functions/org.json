@@ -50,7 +50,7 @@
       "role": {
         "title": "Meta 广告投放专员",
         "duty": [
-          "Wilson 给主题，写广告文案（多个版本）和投放方案",
+          "Wilson 给主题，写广告文案和投放设置，批准后在对应专页的广告帐户建好广告（先暂停）",
           "和 Lulu 配合出广告图",
           "控制成本，提升 ROAS"
         ],
@@ -90,7 +90,7 @@
       "role": {
         "title": "社媒内容运营",
         "duty": [
-          "每 2 天更新 Facebook 专页帖子",
+          "每 2 天给 4 个 FB 专页各写一篇帖子（附配图），批准后自动发布",
           "运营 IG / TikTok 账号，排内容日历",
           "负责粉丝增长和互动"
         ],
@@ -407,9 +407,9 @@
       "prompt": "在还没接入广告后台的情况下，写一份每日广告检查清单和暂停规则（什么情况暂停、什么情况加预算）。"
     },
     {
-      "key": "mimi_fb",
+      "key": "mimi_fb_maction",
       "who": "mimi",
-      "n": "Facebook 专页帖子（每 2 天）",
+      "n": "FB 帖子：MACTION",
       "cad": "每 2 天 10:00",
       "schedule": {
         "everyDays": 2,
@@ -432,7 +432,95 @@
           "让 Lulu 生成配图"
         ]
       ],
-      "prompt": "写一条 Facebook 专页帖子：吸引人的开头、正文、行动号召和 3–5 个话题标签，适合社媒电商。再给一张配图。Wilson 批准后发布（接上 Facebook 专页后会自动发布）。"
+      "prompt": "为这个 Facebook 专页写一条新帖子：吸引人的开头、正文、行动号召和 3–5 个话题标签。主题要贴合专页定位，参考最近帖子的语气但不要重复。Wilson 批准后会自动发布到这个专页。",
+      "page": "maction"
+    },
+    {
+      "key": "mimi_fb_academy",
+      "who": "mimi",
+      "n": "FB 帖子：Maction Academy",
+      "cad": "每 2 天 11:00",
+      "schedule": {
+        "everyDays": 2,
+        "at": "11:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "research_trends",
+          "想今天的帖子主题"
+        ],
+        [
+          "write_post",
+          "写帖子文案",
+          1
+        ],
+        [
+          "image",
+          "让 Lulu 生成配图"
+        ]
+      ],
+      "prompt": "为这个 Facebook 专页写一条新帖子：吸引人的开头、正文、行动号召和 3–5 个话题标签。主题要贴合专页定位，参考最近帖子的语气但不要重复。Wilson 批准后会自动发布到这个专页。",
+      "page": "academy"
+    },
+    {
+      "key": "mimi_fb_pinyu",
+      "who": "mimi",
+      "n": "FB 帖子：品誉Pinyu Malaysia",
+      "cad": "每 2 天 14:00",
+      "schedule": {
+        "everyDays": 2,
+        "at": "14:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "research_trends",
+          "想今天的帖子主题"
+        ],
+        [
+          "write_post",
+          "写帖子文案",
+          1
+        ],
+        [
+          "image",
+          "让 Lulu 生成配图"
+        ]
+      ],
+      "prompt": "为这个 Facebook 专页写一条新帖子：吸引人的开头、正文、行动号召和 3–5 个话题标签。主题要贴合专页定位，参考最近帖子的语气但不要重复。Wilson 批准后会自动发布到这个专页。",
+      "page": "pinyu"
+    },
+    {
+      "key": "mimi_fb_jacky",
+      "who": "mimi",
+      "n": "FB 帖子：Dr. Jacky Lim 林劲安",
+      "cad": "每 2 天 15:00",
+      "schedule": {
+        "everyDays": 2,
+        "at": "15:00"
+      },
+      "ap": true,
+      "on": true,
+      "steps": [
+        [
+          "research_trends",
+          "想今天的帖子主题"
+        ],
+        [
+          "write_post",
+          "写帖子文案",
+          1
+        ],
+        [
+          "image",
+          "让 Lulu 生成配图"
+        ]
+      ],
+      "prompt": "为这个 Facebook 专页写一条新帖子：吸引人的开头、正文、行动号召和 3–5 个话题标签。主题要贴合专页定位，参考最近帖子的语气但不要重复。Wilson 批准后会自动发布到这个专页。",
+      "page": "jacky"
     },
     {
       "key": "mimi_daily",
@@ -670,5 +758,40 @@
       ],
       "prompt": "写本周要发到 WhatsApp 社群的通知：一条主通知（活动/新品/优惠，带 emoji 和 *粗体* 重点，适合直接复制转发），再加一条周中提醒。没有具体活动时，写一条关怀老客户、引导回购的通知，并标注需要 Wilson 填写的地方。"
     }
-  ]
+  ],
+  "meta": {
+    "pages": [
+      {
+        "key": "maction",
+        "name": "MACTION",
+        "pageId": "115678563164423",
+        "adAccount": "1670543204163828",
+        "adAccountName": "Maction Page",
+        "postAt": "10:00"
+      },
+      {
+        "key": "academy",
+        "name": "Maction Academy",
+        "pageId": "259667950574412",
+        "adAccount": null,
+        "postAt": "11:00"
+      },
+      {
+        "key": "pinyu",
+        "name": "品誉Pinyu Malaysia",
+        "pageId": "298720759994619",
+        "adAccount": "2070031456723180",
+        "adAccountName": "PINYU品誉",
+        "postAt": "14:00"
+      },
+      {
+        "key": "jacky",
+        "name": "Dr. Jacky Lim 林劲安",
+        "pageId": "2246270468717741",
+        "adAccount": "481966563309622",
+        "adAccountName": "Jacky Page",
+        "postAt": "15:00"
+      }
+    ]
+  }
 }
