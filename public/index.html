@@ -1699,7 +1699,6 @@ function drawOverlay(id,t,now){
   ctx.font = `600 ${fs}px ${FB}`; const tw = ctx.measureText(a.name).width+14, th = fs+6;
   rr(px-tw/2,py-th,tw,th,th/2); ctx.fillStyle = 'rgba(8,6,24,.85)'; ctx.fill(); ctx.strokeStyle = rgba(c,.8); ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(a.name, px, py-th/2+0.5);
-  { const im = typeof AVA_IMG !== 'undefined' && AVA_IMG[id]; if (PROJ && im && im.complete && im.naturalWidth) { const r = th*0.95, ax = px - tw/2 - r*0.55, ay = py - th/2; ctx.save(); ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip(); ctx.drawImage(im, ax - r, ay - r*0.95, r*2, r*2); ctx.restore(); ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2); ctx.strokeStyle = c; ctx.lineWidth = 1.5; ctx.stroke(); } }
   let b = (a.say && a.say.until>now) ? a.say.text : a.bubble;
   if(!b && (a.state==='thinking')) b = '•'.repeat(Math.floor(t*3)%3+1);
   const key = b && b.startsWith('•') ? '•' : b;
