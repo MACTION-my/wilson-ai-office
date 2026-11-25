@@ -340,6 +340,16 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
 .step h3{font-size:14px}
 .step p{font-size:13px}
 
+/* full-screen office; every control sits below it */
+.app{max-width:none}
+.grid{grid-template-columns:minmax(0,1fr)!important}
+.stage{grid-column:1!important;grid-row:1!important;height:calc(100vh - 92px);height:calc(100dvh - 92px);min-height:420px}
+.stage canvas{cursor:grab}
+.side{grid-column:1!important;grid-row:2!important;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.depts{grid-column:1!important;grid-row:3!important}
+.seg.rot button{font-size:15px;min-width:34px}
+@media (max-width:1100px){.side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.side{grid-template-columns:minmax(0,1fr)}.stage{height:72vh;height:72dvh}.stagebar{flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 16px)}}
 @media (pointer:coarse){.who button,.presets button,.tf button,.dbtn,.seg button,.cbtn{min-height:40px}}
 @media (prefers-reduced-motion:reduce){.dept,.go,.dept:hover,.go:hover{transition:none;transform:none}}
 </style>
@@ -349,7 +359,6 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
     <div class="brand">
       <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 9 L11 23 L16 13 L21 23 L26 9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div>
-        <div class="k">Wilson 的 AI 办公室 · Wilson &amp; Co.</div>
         <h1><em>WILSON</em> AI Office</h1>
       </div>
     </div>
@@ -363,6 +372,7 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
       <canvas id="cv" aria-label="等距视角的 AI 办公室：Wilson 的角落办公室，以及 PA、Meta 广告、社媒内容、WhatsApp 客服、视频、设计、运营七个部门"></canvas>
       <div class="mtag"><span id="mtag">当前任务：<b>日常运营中</b></span></div>
       <div class="stagebar">
+        <div class="seg rot" role="group" aria-label="旋转视角"><button type="button" id="rotL" aria-label="向左转 90 度">⟲</button><button type="button" id="orbitBtn" aria-pressed="false">环绕</button><button type="button" id="rotR" aria-label="向右转 90 度">⟳</button></div>
         <div class="seg" role="group" aria-label="时间">
           <button data-tod="auto" aria-pressed="true">自动昼夜</button>
           <button data-tod="day" aria-pressed="false">白天</button>
@@ -376,7 +386,6 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
         </div>
       </div>
       <div class="clock" id="clock">15:00 · 白天</div>
-      <div class="hint">点小宠打招呼 · 扫地机器人也能点</div>
     </section>
 
     <aside class="side">
@@ -405,7 +414,6 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
           <option value="none">全部直接完成，不用批准</option>
         </select></div>
         <button class="go" id="go"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10 L17 3 L12 17 L10 11 Z" fill="currentColor"/></svg>派出任务</button>
-        <p class="tip">派给「全公司」：Sasa 拆给各部门一起做。点名某位员工：直接交给 TA，可以同时派给好几个人。也可以直接输入 <code>@Kiki 回复今天的客户</code>。</p>
         <div class="phases" id="phases"><span>老板下达</span><span>启动会</span><span>部门执行</span><span>汇总</span><span>老板审批</span></div>
         <div class="bar"><i id="bar"></i></div>
         <div class="prow"><span id="ptxt">等待 Wilson 下达任务</span><span id="pnum">0%</span></div>
@@ -477,9 +485,9 @@ const angOf = p => Math.atan2(p.y-C.y, p.x-C.x);
 const place = (x,y,face) => ({pt:{x,y}, ang:angOf({x,y}), face});
 const BOSS_DOOR = [{x:6.2,y:4.9},{x:7.9,y:4.9}], BOSS_MID = {x:5.5,y:3.1};
 const bossPlace = (pt,face) => ({pt, ang:angOf(BOSS_DOOR[1]), inBoss:true, face});
-const BOSS_VISIT = bossPlace({x:3.6,y:5.5},'back'), BOSS_TV = bossPlace({x:2.6,y:1.5},'back'), BOSS_SHELF = bossPlace({x:1.4,y:2.6}), BOSS_TANK = bossPlace({x:5.7,y:1.75},'back');
+const BOSS_VISIT = bossPlace({x:3.6,y:5.5},[-0.3,-2.7]), BOSS_TV = bossPlace({x:2.6,y:1.5},[0,-1]), BOSS_SHELF = bossPlace({x:1.4,y:2.6},[-1,0]), BOSS_TANK = bossPlace({x:5.7,y:1.75},[0,-1]);
 const COFFEE = place(15.0,18.5), FOOS_L = place(12.25,19.45), FOOS_R = place(15.15,19.45), SOFA = place(11.0,19.1), SHOOT = place(2.4,19.3);
-const STATION = {sasa:place(9.6,2.6,'back'), nana:place(16.0,4.2,'back'), mimi:place(22.3,5.3), lulu:place(22.7,19.95,'back'), bobo:place(5.9,19.9,'back'), wawa:place(2.4,11.6,'back')};
+const STATION = {sasa:place(9.6,2.6,[-0.6,-1.1]), nana:place(16.0,4.2,[-1,0]), mimi:place(22.3,5.3,[1,1]), lulu:place(22.7,19.95,[1.4,-0.55]), bobo:place(5.9,19.9,[-0.65,-0.6]), wawa:place(2.4,11.6,[-1,0])};
 ALL.forEach((id,i) => {
   const a = AG[id];
   if(id==='wilson'){a.seat = {x:3.3,y:2.8}; a.home = bossPlace(a.seat)}
@@ -489,7 +497,7 @@ ALL.forEach((id,i) => {
     a.ang = angOf(a.seat); a.home = {pt:a.seat, ang:a.ang};
     a.station = STATION[id] || null;
     const vp = {x:a.seat.x-Math.cos(a.ang)*1.3, y:a.seat.y-Math.sin(a.ang)*1.3};
-    a.visitPlace = {pt:vp, ang:a.ang, face:(a.seat.x+a.seat.y < vp.x+vp.y) ? 'back' : null};
+    a.visitPlace = {pt:vp, ang:a.ang, face:[a.seat.x-vp.x, a.seat.y-vp.y]};
   }
   a.pos = {...a.seat}; a.path = []; a.res = null; a.z = 0; a.dir = 0; a.sdx = 0; a.sdy = 1; a.loc = a.home; a.facePl = null;
   a.state = id==='wilson' ? 'office' : 'routine';
@@ -503,7 +511,7 @@ function pickR0(arr){return arr[0]}
   const sorted = TEAM.slice().sort((p,q)=>AG[p].ang-AG[q].ang);
   sorted.forEach(id => {
     const a = AG[id], an = a.ang, pt = {x:C.x+Math.cos(an)*2.35, y:C.y+Math.sin(an)*2.35};
-    a.spotPlace = {pt, ang:an, face:(pt.x+pt.y > C.x+C.y) ? 'back' : null};
+    a.spotPlace = {pt, ang:an, face:[C.x-pt.x, C.y-pt.y]};
   });
 })();
 function angDiff(a,b){let d=b-a; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; return d}
@@ -584,20 +592,50 @@ const stage = $('#stage'), cv = $('#cv'), mainCtx = cv.getContext('2d');
 let ctx = mainCtx;
 const lay = document.createElement('canvas'), lctx = lay.getContext('2d');
 const BG = {day:document.createElement('canvas'), dusk:document.createElement('canvas'), night:document.createElement('canvas')};
-let W=800,H=500,TW=34,TH=17,OX=400,OY=80,DPR=1,vig=null;
-const P = (x,y,z=0) => [OX+(x-y)*TW/2, OY+(x+y)*TH/2 - z*TH];
+let W=800,H=500,TW=34,TH=17,CX=400,CY=300,DPR=1,vig=null;
+// The room turns around its centre. VIEW is the camera angle in radians (0 = the original corner view).
+let VIEW = 0, VIEWT = 0, vCos = 1, vSin = 0, orbit = false, bgView = null;
+const RCX = GX/2, RCY = GY/2;
+function setView(a){VIEW = a; vCos = Math.cos(a); vSin = Math.sin(a)}
+const rotN = (nx,ny) => [nx*vCos - ny*vSin, nx*vSin + ny*vCos];
+const P = (x,y,z=0) => {const dx = x-RCX, dy = y-RCY, a = dx*vCos - dy*vSin, b = dx*vSin + dy*vCos; return [CX+(a-b)*TW/2, CY+(a+b)*TH/2 - z*TH]};
+const depth = (x,y) => {const dx = x-RCX, dy = y-RCY; return (dx*vCos - dy*vSin) + (dx*vSin + dy*vCos)};
+const faceVis = (nx,ny) => {const [a,b] = rotN(nx,ny); return a+b > 0.02};
+const faceAway = v => {const [a,b] = rotN(v[0],v[1]); return a+b < -0.05};
 
 function poly(c,pts,fill,stroke,lw){c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(stroke){c.strokeStyle=stroke;c.lineWidth=lw||1;c.stroke()}}
 function line(c,a,b){c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke()}
+const BOXN = [[0,-1],[1,0],[0,1],[-1,0]];
 function box(c,x0,y0,x1,y1,z,h,col,o={}){
-  poly(c,[P(x0,y1,z),P(x1,y1,z),P(x1,y1,z+h),P(x0,y1,z+h)],o.left||shade(col,-0.18),o.edge,1);
-  poly(c,[P(x1,y0,z),P(x1,y1,z),P(x1,y1,z+h),P(x1,y0,z+h)],o.right||shade(col,-0.36),o.edge,1);
-  poly(c,[P(x0,y0,z+h),P(x1,y0,z+h),P(x1,y1,z+h),P(x0,y1,z+h)],o.top||col,o.edge,1);
+  // draw only the side faces turned towards the camera, then the top
+  const C4 = [[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+  for(let i=0;i<4;i++){
+    const [a,b] = rotN(BOXN[i][0],BOXN[i][1]); if(a+b <= 0.001) continue;
+    const p = C4[i], q = C4[(i+1)%4];
+    poly(c,[P(p[0],p[1],z),P(q[0],q[1],z),P(q[0],q[1],z+h),P(p[0],p[1],z+h)], a>b ? (o.right||shade(col,-0.36)) : (o.left||shade(col,-0.18)), o.edge, 1);
+  }
+  poly(c,C4.map(p=>P(p[0],p[1],z+h)),o.top||col,o.edge,1);
 }
 function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 function ell(x,y,rx,ry,fill){ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(x,y,Math.max(0.1,rx),Math.max(0.1,ry),0,0,Math.PI*2); ctx.fill()}
-function planeY(y,x0,x1,z0,z1,fn){const p=P(x0,y,z1); ctx.save(); ctx.translate(p[0],p[1]); ctx.transform(1,0.5,0,1,0,0); fn((x1-x0)*TW/2,(z1-z0)*TH); ctx.restore()}
-function planeX(x,y0,y1,z0,z1,fn){const p=P(x,y1,z1); ctx.save(); ctx.translate(p[0],p[1]); ctx.transform(1,-0.5,0,1,0,0); fn((y1-y0)*TW/2,(z1-z0)*TH); ctx.restore()}
+// A vertical surface (screen, sign, board) facing direction (nx,ny). Hidden when it faces away from the camera.
+function plane(p0,p1,nx,ny,z0,z1,fn){
+  if(!faceVis(nx,ny)) return;
+  let s0 = P(p0[0],p0[1],z1), s1 = P(p1[0],p1[1],z1);
+  if(s1[0] < s0[0]){const tmp = s0; s0 = s1; s1 = tmp}
+  const w = Math.hypot(p1[0]-p0[0], p1[1]-p0[1])*TW/2, h = (z1-z0)*TH;
+  ctx.save(); ctx.translate(s0[0],s0[1]); ctx.transform((s1[0]-s0[0])/w,(s1[1]-s0[1])/w,0,1,0,0); fn(w,h); ctx.restore();
+}
+function planeY(y,x0,x1,z0,z1,fn){plane([x0,y],[x1,y],0,1,z0,z1,fn)}
+function planeX(x,y0,y1,z0,z1,fn){plane([x,y1],[x,y0],1,0,z0,z1,fn)}
+// Lay text flat on the floor, always reading left to right.
+function floorXf(x,y,z=0){
+  const p = P(x,y,z), ex = P(x+1,y,z), ey = P(x,y+1,z), k = TW/2;
+  let a = (ex[0]-p[0])/k, b = (ex[1]-p[1])/k, c = (ey[0]-p[0])/k, d = (ey[1]-p[1])/k;
+  if(Math.abs(a) < Math.abs(c)){[a,b,c,d] = [c,d,-a,-b]}
+  if(a < 0){a = -a; b = -b; c = -c; d = -d}
+  return [p[0],p[1],a,b,c,d];
+}
 function pool(g,x,y,r,col,al){
   const [px,py] = P(x,y), R = r*TW*0.7;
   g.save(); g.globalCompositeOperation = 'lighter'; g.translate(px,py); g.scale(1,0.5);
@@ -605,15 +643,18 @@ function pool(g,x,y,r,col,al){
   g.fillStyle = gr; g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fill(); g.restore();
 }
 function floorText(g,txt,x,y,size,col,glow,weight){
-  const p = P(x,y); g.save(); g.translate(p[0],p[1]); g.transform(1,0.5,-1,0.5,0,0);
+  const [px,py,a,b,c,d] = floorXf(x,y); g.save(); g.translate(px,py); g.transform(a,b,c,d,0,0);
   g.font = `${weight||700} ${size}px ${FD}`; g.textAlign = 'center'; g.textBaseline = 'middle';
   if(glow){g.shadowColor = col; g.shadowBlur = glow} g.fillStyle = col; g.fillText(txt,0,0); g.restore();
 }
 
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio||1);
-  W = stage.clientWidth; TW = W/((GX+GY)/2+1.4); TH = TW/2; OX = (GY/2+0.7)*TW; OY = 4.6*TH + 8;
-  H = Math.round(OY + (GX+GY)/2*TH + TH*1.3);
+  // fit the room for every angle so the size never jumps while it turns
+  W = stage.clientWidth; H = Math.max(360, Math.round(stage.clientHeight || window.innerHeight*0.8));
+  const K = Math.hypot(GX,GY)/2*Math.SQRT2;
+  TW = Math.min(W/(K+1.2), 2*H/(K+7.4)); TH = TW/2;
+  CX = W/2; CY = Math.max(6, (H - (K+7.4)*TH)/2) + (K/2+5.6)*TH;
   cv.style.height = H+'px'; cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
   lay.width = cv.width; lay.height = cv.height;
   vig = mainCtx.createRadialGradient(W/2,H*0.55,Math.min(W,H)*0.35,W/2,H*0.55,Math.max(W,H)*0.75);
@@ -636,8 +677,21 @@ function skyColor(stops,z){
   for(let i=0;i<stops.length-1;i++){const [z0,c0]=stops[i],[z1,c1]=stops[i+1]; if(z<=z1){const t=Math.max(0,(z-z0)/(z1-z0)); return `rgb(${c0.map((v,k)=>Math.round(v+(c1[k]-v)*t)).join(',')})`}}
   const l = stops[stops.length-1][1]; return `rgb(${l.join(',')})`;
 }
-function drawWall(g,side,len,pl){
-  const WP = (u,z) => side==='R' ? P(u,0,z) : P(0,u,z), W0 = 0.3, W1 = 3.35;
+const WALLS = [
+  {p0:[0,0], d:[1,0], len:GX, n:[0,1]},
+  {p0:[0,0], d:[0,1], len:GY, n:[1,0]},
+  {p0:[GX,GY], d:[-1,0], len:GX, n:[0,-1]},
+  {p0:[GX,GY], d:[0,-1], len:GY, n:[-1,0]},
+];
+const wallP = (w,u,z) => P(w.p0[0]+w.d[0]*u, w.p0[1]+w.d[1]*u, z);
+// the visible back walls, ordered left then right on screen
+function backWalls(){
+  const vis = WALLS.filter(w => faceVis(w.n[0],w.n[1]));
+  vis.sort((a,b) => wallP(a,a.len/2,0)[0] - wallP(b,b.len/2,0)[0]);
+  return vis.length ? vis : [WALLS[0]];
+}
+function drawWall(g,wall,pl){
+  const len = wall.len, WP = (u,z) => wallP(wall,u,z), W0 = 0.3, W1 = 3.35;
   poly(g,[WP(0,0),WP(len,0),WP(len,WALL),WP(0,WALL)], pl.base);
   const n = 28;
   for(let i=0;i<n;i++){const za=W0+(W1-W0)*i/n, zb=W0+(W1-W0)*(i+1)/n; poly(g,[WP(0,za),WP(len,za),WP(len,zb+0.02),WP(0,zb+0.02)], skyColor(pl.sky,(za+zb)/2))}
@@ -670,7 +724,7 @@ function renderBG(cvs,mode){
   const g = cvs.getContext('2d'); g.setTransform(DPR,0,0,DPR,0,0); seed = 11;
   const grd = g.createLinearGradient(0,0,0,H); grd.addColorStop(0,pl.bgTop); grd.addColorStop(1,pl.bgBot);
   g.fillStyle = grd; g.fillRect(0,0,W,H);
-  drawWall(g,'L',GY,pl); drawWall(g,'R',GX,pl);
+  WALLS.forEach((w,i) => {seed = 11 + i*977; if(faceVis(w.n[0],w.n[1])) drawWall(g,w,pl)}); seed = 11;
   for(let i=0;i<GX;i+=2) for(let j=0;j<GY;j+=2) poly(g,[P(i,j),P(i+2,j),P(i+2,j+2),P(i,j+2)], ((i+j)/2)%2?pl.fA:pl.fB, pl.fLine, 1);
   // Wilson's office: walnut floor + rug
   poly(g,[P(0,0),P(7,0),P(7,6.5),P(0,6.5)],pl.walnut);
@@ -778,7 +832,7 @@ function update(dt,rdt){
     const a = AG[id];
     if(a.path.length){
       const tg = a.path[0], dx = tg.x-a.pos.x, dy = tg.y-a.pos.y, d = Math.hypot(dx,dy), step = 3.4*dt;
-      if(d>0.001){const k = Math.min(1,rdt*12); a.sdx += ((dx-dy)/d/1.414-a.sdx)*k; a.sdy += ((dx+dy)/d/1.414-a.sdy)*k; a.dir = a.sdx}
+      if(d>0.001){const k = Math.min(1,rdt*12), [ra,rb] = rotN(dx,dy); a.sdx += ((ra-rb)/d/1.414-a.sdx)*k; a.sdy += ((ra+rb)/d/1.414-a.sdy)*k; a.dir = a.sdx}
       if(d<=step){a.pos.x=tg.x; a.pos.y=tg.y; a.path.shift(); if(!a.path.length && a.res){const r=a.res; a.res=null; r()}}
       else {a.pos.x += dx/d*step; a.pos.y += dy/d*step}
       if(!RM && Math.random() < rdt*8){const [fx0,fy0] = P(a.pos.x,a.pos.y,0); sparks.push({x:fx0+(Math.random()-0.5)*TW*0.4,y:fy0,vx:(Math.random()-0.5)*14,vy:-10-Math.random()*12,g:0,life:0.6,max:0.6,c:'#a9a4e0',s:Math.max(2,TW*0.1),dust:true})}
@@ -816,6 +870,8 @@ function update(dt,rdt){
   const tw = targetW(), kk = todMode==='auto' ? 1 : Math.min(1, rdt*1.5);
   WT.d += (tw.d-WT.d)*kk; WT.k += (tw.k-WT.k)*kk; WT.n += (tw.n-WT.n)*kk;
   hq += (hqTarget-hq)*Math.min(1,rdt*3);
+  if(orbit && !dragging) VIEWT += rdt*0.12;
+  if(Math.abs(VIEWT-VIEW) > 1e-4) setView(Math.abs(VIEWT-VIEW) < 0.002 ? VIEWT : VIEW + (VIEWT-VIEW)*Math.min(1, rdt*(dragging ? 20 : 6)));
   const tx = mouse ? (0.5-mouse.x/W)*W*0.012 : 0, ty = mouse ? (0.5-mouse.y/H)*H*0.012 : 0;
   cam.x += (tx-cam.x)*Math.min(1,rdt*2.5); cam.y += (ty-cam.y)*Math.min(1,rdt*2.5);
 }
@@ -823,7 +879,7 @@ function update(dt,rdt){
 /* ---------- furniture ---------- */
 let T = 0;
 function plant(x,y,sc){
-  return {k:x+y, f:() => {
+  return {at:[x,y], f:() => {
     box(ctx,x-0.24*sc,y-0.24*sc,x+0.24*sc,y+0.24*sc,0,0.42*sc,'#efeaf7',{top:'#5a4636',left:'#ddd6ea',right:'#c4bcd6'});
     const sw = RM ? 0 : Math.sin(T*1.3+x)*TW*0.02;
     [[-0.12,-0.1,0.9,'#1d7a55'],[0.14,-0.12,1.05,'#1f8a5e'],[0,0.05,1.35,'#27a874'],[-0.15,0.12,0.75,'#2fbf83'],[0.12,0.14,0.85,'#3ad08b'],[0,0,1.0,'#46e09a']].forEach(([dx,dy,dz,col]) => {
@@ -851,18 +907,18 @@ const FURN = [];
 function buildFurniture(){
   FURN.length = 0;
   /* Wilson's office */
-  FURN.push({k:3.2, f:() => {
+  FURN.push({at:[0.4,2.8], f:() => {
     box(ctx,0.1,1.2,0.65,4.4,0,2.3,'#5a3c34',{top:'#6c4a40',right:'#46302a'});
     const cols = ['#b48cff','#ff6fc8','#3ee6ff','#ffd166','#e9e2d0','#7a6cff','#ff9a8b','#3fdc8a'];
     let s = 3;
-    [0.15,0.75,1.35].forEach(z0 => {
+    if(faceVis(1,0)) [0.15,0.75,1.35].forEach(z0 => {
       ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = Math.max(1,TW*0.04); line(ctx,P(0.65,1.2,z0+0.55),P(0.65,4.4,z0+0.55));
       for(let y=1.3;y<4.25;){const w = 0.1+((s*37)%7)*0.025, hh = 0.32+((s*13)%5)*0.04; poly(ctx,[P(0.65,y,z0),P(0.65,y+w,z0),P(0.65,y+w,z0+hh),P(0.65,y,z0+hh)],cols[s%cols.length]); y += w+0.02; s++}
     });
     ctx.save(); ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 12; box(ctx,0.28,2.2,0.48,2.4,2.3,0.35,'#ffd166',{top:'#ffe7a3'}); ctx.restore();
   }});
-  FURN.push({k:5.5, f:() => {box(ctx,2.85,2.15,3.75,2.4,0,1.6,'#24213a',{top:'#34304f'}); box(ctx,2.85,2.4,3.75,3.15,0.05,0.35,'#2d2a46')}});
-  FURN.push({k:7.35, f:() => {
+  FURN.push({at:[3.3,2.65], f:() => {box(ctx,2.85,2.15,3.75,2.4,0,1.6,'#24213a',{top:'#34304f'}); box(ctx,2.85,2.4,3.75,3.15,0.05,0.35,'#2d2a46')}});
+  FURN.push({at:[3.3,4.05], f:() => {
     box(ctx,1.8,3.6,4.8,4.5,0,0.62,'#7a5540',{top:'#a37656',left:'#6a4935',right:'#4d3624',edge:'rgba(255,220,180,.14)'});
     ctx.save(); ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 6; ctx.strokeStyle = 'rgba(255,209,102,.8)'; ctx.lineWidth = 1.2; line(ctx,P(1.8,4.5,0.6),P(4.8,4.5,0.6)); ctx.restore();
     poly(ctx,[P(2.75,4.5,0.2),P(3.85,4.5,0.2),P(3.85,4.5,0.42),P(2.75,4.5,0.42)],'#d9b45a');
@@ -876,7 +932,7 @@ function buildFurniture(){
     steam(2.2,3.95,0.85);
   }});
   // aquarium
-  FURN.push({k:6.4, f:() => {
+  FURN.push({at:[5.75,0.65], f:() => {
     box(ctx,4.9,0.35,6.6,0.95,0,0.6,'#4a342c',{top:'#5c4238'});
     box(ctx,4.95,0.4,6.55,0.9,0.6,0.75,'#5fb8ff',{top:'rgba(170,225,255,.5)',left:'rgba(70,160,240,.55)',right:'rgba(50,130,220,.55)',edge:'rgba(220,240,255,.6)'});
     planeY(0.9,4.95,6.55,0.6,1.35,(w,h)=>{
@@ -892,23 +948,23 @@ function buildFurniture(){
   }});
   FURN.push(plant(6.25,5.9,1.15), plant(7.75,0.8,1.0), plant(13.95,0.75,1.1), plant(20.0,0.75,1.0), plant(25.3,7.6,1.15), plant(25.3,14.3,1.0), plant(25.3,21.4,1.25), plant(0.85,7.4,1.1), plant(0.85,13.8,1.0), plant(8.2,21.4,1.05), plant(17.6,21.4,1.0), plant(19.6,8.0,0.9));
   // glass walls of Wilson's office
-  for(let x=0;x<7;x++) FURN.push({k:x+0.5+6.5, f:() => glassPanel(P(x,6.5,0),P(x+1,6.5,0),P(x+1,6.5,GH),P(x,6.5,GH))});
-  [[0,1],[1,2],[2,3],[3,4.2],[5.6,6.5]].forEach(([y0,y1]) => FURN.push({k:7+(y0+y1)/2, f:() => glassPanel(P(7,y0,0),P(7,y1,0),P(7,y1,GH),P(7,y0,GH))}));
-  FURN.push({k:9.2, f:() => {
+  for(let x=0;x<7;x++) FURN.push({at:[x+0.5,6.5], f:() => glassPanel(P(x,6.5,0),P(x+1,6.5,0),P(x+1,6.5,GH),P(x,6.5,GH))});
+  [[0,1],[1,2],[2,3],[3,4.2],[5.6,6.5]].forEach(([y0,y1]) => FURN.push({at:[7,(y0+y1)/2], f:() => glassPanel(P(7,y0,0),P(7,y1,0),P(7,y1,GH),P(7,y0,GH))}));
+  FURN.push({at:[7,1.9], f:() => {
     planeX(7,0.4,3.4,1.4,2.2,(w,h)=>{
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.font = `700 ${TW*0.4}px ${FD}`; ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 12; ctx.fillStyle = '#ffd166'; ctx.fillText('WILSON · CEO',w/2,h*0.35);
       ctx.shadowBlur = 0; ctx.font = `600 ${TW*0.24}px ${FB}`; ctx.fillStyle = 'rgba(255,230,180,.85)'; ctx.fillText('老板办公室',w/2,h*0.8);
     });
   }});
-  [[4.12,4.2],[5.6,5.68],[6.45,6.55]].forEach(([y0,y1]) => FURN.push({k:7+y1, f:() => box(ctx,6.95,y0,7.05,y1,0,GH,'#b6bbe0',{top:'#d9dcf5'})}));
-  FURN.push({k:13.45, f:() => box(ctx,0,6.45,0.1,6.55,0,GH,'#b6bbe0')});
+  [[4.12,4.2],[5.6,5.68],[6.45,6.55]].forEach(([y0,y1]) => FURN.push({at:[7,(y0+y1)/2], f:() => box(ctx,6.95,y0,7.05,y1,0,GH,'#b6bbe0',{top:'#d9dcf5'})}));
+  FURN.push({at:[0.05,6.5], f:() => box(ctx,0,6.45,0.1,6.55,0,GH,'#b6bbe0')});
 
   /* Sasa: printer + filing cabinet */
-  FURN.push({k:11.0, f:() => {box(ctx,8.7,1.2,9.35,1.8,0,0.7,'#d9dbe8',{top:'#eef0f8'}); poly(ctx,[P(8.8,1.3,0.71),P(9.25,1.3,0.71),P(9.25,1.7,0.71),P(8.8,1.7,0.71)],'#ffffff'); ell(...P(9.35,1.6,0.5),TW*0.035,TW*0.035,'#4dffa6')}});
-  FURN.push({k:15.2, f:() => {box(ctx,12.6,1.2,13.3,1.9,0,1.05,'#c9c4dc',{top:'#e3dff0'}); [0.25,0.6,0.92].forEach(z=>{ctx.strokeStyle='rgba(40,30,80,.35)'; ctx.lineWidth=1; line(ctx,P(12.7,1.9,z),P(13.2,1.9,z))})}});
+  FURN.push({at:[9.0,1.5], f:() => {box(ctx,8.7,1.2,9.35,1.8,0,0.7,'#d9dbe8',{top:'#eef0f8'}); poly(ctx,[P(8.8,1.3,0.71),P(9.25,1.3,0.71),P(9.25,1.7,0.71),P(8.8,1.7,0.71)],'#ffffff'); ell(...P(9.35,1.6,0.5),TW*0.035,TW*0.035,'#4dffa6')}});
+  FURN.push({at:[12.95,1.55], f:() => {box(ctx,12.6,1.2,13.3,1.9,0,1.05,'#c9c4dc',{top:'#e3dff0'}); [0.25,0.6,0.92].forEach(z=>{ctx.strokeStyle='rgba(40,30,80,.35)'; ctx.lineWidth=1; line(ctx,P(12.7,1.9,z),P(13.2,1.9,z))})}});
   /* Nana: standing ads dashboard */
-  FURN.push({k:18.7, f:() => {
+  FURN.push({at:[14.85,3.75], f:() => {
     legs(14.85,2.3,0.6); legs(14.85,5.2,0.6);
     box(ctx,14.78,2.0,14.88,5.5,0.55,1.6,'#1b1934',{edge:'rgba(255,255,255,.1)'});
     planeX(14.88,2.08,5.42,0.63,2.07,(w,h)=>{
@@ -926,7 +982,7 @@ function buildFurniture(){
     });
   }});
   /* Mimi: pink backdrop with neon heart + ring light */
-  FURN.push({k:25.7, f:() => {
+  FURN.push({at:[20.8,4.85], f:() => {
     box(ctx,20.75,3.5,20.85,6.2,0,2.1,'#ffd2e2',{right:'#ffd9e6',top:'#ffe6ef'});
     planeX(20.85,3.5,6.2,0,2.1,(w,h)=>{
       const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#ffd0e4'); g.addColorStop(1,'#ffb3cf'); ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
@@ -936,7 +992,7 @@ function buildFurniture(){
       ctx.font = `700 ${Math.max(6,h*0.1)}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#c2185b'; ctx.fillText('CONTENT · LIVE',cx,h*0.68);
     });
   }});
-  FURN.push({k:30.5, f:() => {
+  FURN.push({at:[24.9,5.6], f:() => {
     const [bx,by] = P(24.9,5.6,0), [tx,ty] = P(24.9,5.6,1.75);
     ctx.strokeStyle = '#3b3756'; ctx.lineWidth = Math.max(1.5,TW*0.05); line(ctx,[bx,by],[tx,ty]);
     [-1,0,1].forEach(k=>line(ctx,[bx,by],[bx+k*TW*0.22,by+TW*0.06+(k?0:TW*0.06)]));
@@ -947,7 +1003,7 @@ function buildFurniture(){
     if(fx.ring && !RM && Math.random()<0.04){burst(tx,ty,['#ffffff'],6,60)}
   }});
   /* Kiki: chat neon panel */
-  FURN.push({k:33.2, f:() => {
+  FURN.push({at:[21.3,11.7], f:() => {
     box(ctx,21.25,10.3,21.35,13.1,0.35,1.55,'#183a2a',{right:'#1c4a34'});
     planeX(21.35,10.4,13.0,0.42,1.83,(w,h)=>{
       ctx.fillStyle = '#0c2219'; ctx.fillRect(0,0,w,h);
@@ -959,7 +1015,7 @@ function buildFurniture(){
     });
   }});
   /* Lulu: swatch wall + easel */
-  FURN.push({k:39.7, f:() => {
+  FURN.push({at:[21.3,18.1], f:() => {
     box(ctx,21.25,16.6,21.35,19.6,0.3,1.5,'#e9e5f3',{right:'#f4f2fb'});
     planeX(21.35,16.7,19.5,0.38,1.72,(w,h)=>{
       const cols = ['#ff6fc8','#ff9466','#ffd166','#3fdc8a','#3ee6ff','#8aa2ff','#b48cff','#2a2340','#ffffff','#e0486e','#f3b8c8','#9be8d0'];
@@ -967,7 +1023,7 @@ function buildFurniture(){
       cols.forEach((c,i)=>{ctx.fillStyle = c; ctx.fillRect((i%6)*cw+2, Math.floor(i/6)*ch+2, cw-4, ch*0.7)});
     });
   }});
-  FURN.push({k:43.3, f:() => {
+  FURN.push({at:[24.1,19.4], f:() => {
     legs(23.5,19.5,1.9,'#8a6246'); legs(24.7,19.5,1.9,'#8a6246'); legs(24.1,19.1,1.95,'#8a6246');
     box(ctx,23.35,19.35,24.85,19.45,0.55,0.06,'#8a6246');
     planeY(19.45,23.4,24.8,0.62,1.85,(w,h)=>{
@@ -980,12 +1036,12 @@ function buildFurniture(){
     });
   }});
   /* Bobo: studio backdrop, softboxes, camera */
-  FURN.push({k:20.4, f:() => {
+  FURN.push({at:[1.25,19.2], f:() => {
     poly(ctx,[P(1.25,17.6),P(2.7,17.6),P(2.7,20.8),P(1.25,20.8)],'#9fc3c7');
     box(ctx,1.15,17.6,1.25,20.8,0,2.2,'#9fc3c7',{right:'#a9cfd2',top:'#bfe0e2'});
     planeX(1.25,17.6,20.8,0,2.2,(w,h)=>{const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#8fb6bb'); g.addColorStop(1,'#c4e3e4'); ctx.fillStyle = g; ctx.fillRect(0,0,w,h)});
   }});
-  const softbox = (x,y,k) => FURN.push({k, f:() => {
+  const softbox = (x,y,k) => FURN.push({at:[x,y], f:() => {
     legs(x,y,1.5);
     const [px,py] = P(x,y,1.75), on = fx.rec;
     ctx.save(); if(on){ctx.shadowColor = '#fff6dc'; ctx.shadowBlur = 24}
@@ -993,7 +1049,7 @@ function buildFurniture(){
     ctx.restore();
   }});
   softbox(2.8,21.2,24.0); softbox(6.0,17.4,23.4);
-  FURN.push({k:24.55, f:() => {
+  FURN.push({at:[5.25,19.3], f:() => {
     const x = 5.25, y = 19.3, [bx,by] = P(x,y,0), [tx,ty] = P(x,y,1.15);
     ctx.strokeStyle = '#2b2840'; ctx.lineWidth = Math.max(1.2,TW*0.045);
     [[-0.25,0.1],[0.2,0.25],[0.1,-0.25]].forEach(([dx,dy])=>{const f = P(x+dx,y+dy,0); line(ctx,f,[tx,ty])});
@@ -1002,7 +1058,7 @@ function buildFurniture(){
     const on = fx.rec && Math.floor(T*2)%2===0; ctx.save(); if(on){ctx.shadowColor = '#ff3355'; ctx.shadowBlur = 10} ell(...P(x+0.1,y-0.1,1.52),TW*0.045,TW*0.045,fx.rec?(on?'#ff3355':'#7a2030'):'#444'); ctx.restore();
   }});
   /* Wawa: kanban board + parcel shelf */
-  FURN.push({k:13.0, f:() => {
+  FURN.push({at:[1.35,11.5], f:() => {
     legs(1.4,10.3,0.4); legs(1.4,12.7,0.4);
     box(ctx,1.3,10.1,1.4,12.9,0.35,1.55,'#f2f0f8',{right:'#fbfaff'});
     planeX(1.4,10.15,12.85,0.4,1.85,(w,h)=>{
@@ -1016,42 +1072,42 @@ function buildFurniture(){
       ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 4; ctx.fillStyle = '#ffb3cf'; ctx.fillRect(Math.min(x,2*cw+5), h*0.78, cw-10, h*0.17); ctx.restore();
     });
   }});
-  FURN.push({k:17.2, f:() => {
+  FURN.push({at:[6.0,11.2], f:() => {
     box(ctx,5.7,10.0,6.3,12.4,0,1.3,'#d6d1e4',{top:'#e7e3f1'});
     box(ctx,5.75,10.1,6.25,10.7,1.3,0.35,'#c9935f'); box(ctx,5.75,10.9,6.25,11.5,1.3,0.28,'#b98454'); box(ctx,5.8,11.6,6.2,12.2,1.3,0.42,'#d6a26c');
     [0.35,0.8].forEach(z=>{box(ctx,5.75,10.2,6.25,10.9,z,0.3,'#c9935f'); box(ctx,5.75,11.3,6.25,12.2,z,0.32,'#b98454')});
   }});
   /* HQ */
-  FURN.push({k:C.x+C.y-0.1, f:drawTable});
+  FURN.push({at:[C.x-0.05,C.y-0.05], f:drawTable});
   /* lounge */
-  FURN.push({k:28.0, f:() => {
+  FURN.push({at:[11,18.3], f:() => {
     box(ctx,9.8,17.75,12.2,18.05,0,0.95,'#5b4fa0',{top:'#7468bd'});
     box(ctx,9.6,17.75,9.8,18.9,0,0.62,'#5b4fa0',{top:'#7468bd'});
     box(ctx,9.8,18.05,12.2,18.9,0,0.42,'#6658ad',{top:'#7a6cc4'});
     box(ctx,10.1,18.0,10.7,18.25,0.42,0.38,'#ff6fc8',{top:'#ff9fdc'}); box(ctx,11.3,18.0,11.9,18.25,0.42,0.38,'#3ee6ff',{top:'#9ff0ff'});
     box(ctx,12.2,17.75,12.4,18.9,0,0.62,'#5b4fa0',{top:'#7468bd'});
   }});
-  FURN.push({k:30.4, f:() => {box(ctx,10.3,19.6,11.7,20.2,0,0.32,'#7a5840',{top:'#9a7454'}); poly(ctx,[P(10.5,19.7,0.33),P(11.0,19.7,0.33),P(11.0,20.05,0.33),P(10.5,20.05,0.33)],'#f4efe2'); box(ctx,11.3,19.75,11.45,19.9,0.32,0.14,'#ffffff',{top:'#5a3420'}); steam(11.37,19.82,0.5)}});
-  FURN.push({k:33.1, f:drawFoos});
-  FURN.push({k:34.1, f:() => {
+  FURN.push({at:[11,19.9], f:() => {box(ctx,10.3,19.6,11.7,20.2,0,0.32,'#7a5840',{top:'#9a7454'}); poly(ctx,[P(10.5,19.7,0.33),P(11.0,19.7,0.33),P(11.0,20.05,0.33),P(10.5,20.05,0.33)],'#f4efe2'); box(ctx,11.3,19.75,11.45,19.9,0.32,0.14,'#ffffff',{top:'#5a3420'}); steam(11.37,19.82,0.5)}});
+  FURN.push({at:[13.7,19.45], f:drawFoos});
+  FURN.push({at:[16,18.6], f:() => {
     box(ctx,15.6,17.5,16.4,19.7,0,0.95,'#3a3560',{top:'#9a7050'});
     box(ctx,15.7,17.7,16.25,18.3,0.95,0.62,'#d9dbe8',{top:'#eef0f8'});
     ctx.save(); ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 8; ell(...P(16.25,17.95,1.35),TW*0.04,TW*0.04,'#ff4d6d'); ctx.restore();
     box(ctx,15.8,18.7,15.95,18.85,0.95,0.15,'#ffffff',{top:'#5a3420'}); box(ctx,15.8,19.05,15.95,19.2,0.95,0.15,'#ffffff',{top:'#5a3420'});
     steam(15.98,18.0,1.6);
   }});
-  FURN.push({k:30.4, f:() => {
+  FURN.push({at:[9.4,21.0], f:() => {
     ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = Math.max(1,TW*0.04); line(ctx,P(9.4,21.0,0),P(9.4,21.0,1.9));
     ell(...P(9.4,21.0,0),TW*0.16,TW*0.08,'#2a2440');
     const [lx,ly] = P(9.4,21.0,2.0);
     ctx.fillStyle = '#ffe2b0'; ctx.beginPath(); ctx.moveTo(lx-TW*0.18,ly+TW*0.1); ctx.lineTo(lx+TW*0.18,ly+TW*0.1); ctx.lineTo(lx+TW*0.1,ly-TW*0.12); ctx.lineTo(lx-TW*0.1,ly-TW*0.12); ctx.closePath(); ctx.fill();
   }});
   /* pet corner: dog bed + cat tree */
-  FURN.push({k:24.7, f:() => {
+  FURN.push({at:[8.4,16.3], f:() => {
     const [bx,by] = P(8.4,16.4,0.02);
     ell(bx,by+TW*0.04,TW*0.62,TW*0.3,'#9b4a6a'); ell(bx,by,TW*0.6,TW*0.28,'#c9668a'); ell(bx,by+TW*0.02,TW*0.44,TW*0.19,'#f6d9e4');
   }});
-  FURN.push({k:37.9, f:() => {
+  FURN.push({at:[18.4,19.55], f:() => {
     box(ctx,17.95,19.15,18.85,20.05,0,0.12,'#d9c2a0',{top:'#e8d6b8'});
     const [ax,ay] = P(18.4,19.6,0.12), [bx2,by2] = P(18.4,19.6,1.25);
     ctx.strokeStyle = '#b8955f'; ctx.lineWidth = Math.max(4,TW*0.16); line(ctx,[ax,ay],[bx2,by2]);
@@ -1064,59 +1120,82 @@ function buildFurniture(){
   FURN.push({k:-1, f:()=>{}});
 }
 
+/* ---------- turning the office: drag, buttons, slow orbit ---------- */
+let dragging = false, dragFrom = null, dragMoved = false;
+cv.style.touchAction = 'pan-y';
+cv.addEventListener('pointerdown', e => {dragFrom = {x:e.clientX, v:VIEWT}; dragMoved = false});
+window.addEventListener('pointermove', e => {
+  if(!dragFrom) return;
+  const dx = e.clientX - dragFrom.x;
+  if(!dragging && Math.abs(dx) > 6){dragging = true; dragMoved = true; orbit = false; syncOrbit(); try{cv.setPointerCapture(e.pointerId)}catch(_){}}
+  if(dragging){VIEWT = dragFrom.v + dx*0.008; cv.style.cursor = 'grabbing'}
+});
+window.addEventListener('pointerup', () => {dragFrom = null; if(dragging){dragging = false; cv.style.cursor = 'grab'}});
+function turn(step){orbit = false; syncOrbit(); VIEWT = Math.round((VIEWT + step*Math.PI/2)/(Math.PI/2))*(Math.PI/2)}
+function syncOrbit(){const b = document.getElementById('orbitBtn'); if(b) b.setAttribute('aria-pressed', orbit ? 'true' : 'false')}
+document.getElementById('rotL')?.addEventListener('click', () => turn(-1));
+document.getElementById('rotR')?.addEventListener('click', () => turn(1));
+document.getElementById('orbitBtn')?.addEventListener('click', () => {orbit = !orbit; syncOrbit()});
+
 /* ---------- dynamic drawing ---------- */
 function clipWindows(){
   ctx.beginPath();
-  [[P(0,0,0.3),P(GX,0,0.3),P(GX,0,3.35),P(0,0,3.35)],[P(0,0,0.3),P(0,GY,0.3),P(0,GY,3.35),P(0,0,3.35)]].forEach(q=>{ctx.moveTo(q[0][0],q[0][1]); q.slice(1).forEach(p=>ctx.lineTo(p[0],p[1])); ctx.closePath()});
+  backWalls().map(w => [wallP(w,0,0.3),wallP(w,w.len,0.3),wallP(w,w.len,3.35),wallP(w,0,3.35)]).forEach(q=>{ctx.moveTo(q[0][0],q[0][1]); q.slice(1).forEach(p=>ctx.lineTo(p[0],p[1])); ctx.closePath()});
   ctx.clip();
 }
 function drawSky(t){
+  const BW = backWalls(), WL = BW[0], WR = BW[BW.length-1];
+  const onR = (u,z) => wallP(WR, ((u%WR.len)+WR.len)%WR.len, z), onL = (u,z) => wallP(WL, ((u%WL.len)+WL.len)%WL.len, z);
   ctx.save(); clipWindows();
   const sunA = WT.d + WT.k*0.8;
   if(sunA>0.02){
     const f = todMode==='auto' ? clamp(cyc/0.5,0,1) : todMode==='dusk' ? 0.92 : 0.45;
-    const [sx,sy] = P(3+f*20,0,2.65+Math.sin(f*Math.PI)*0.55), dusk = WT.k/(WT.d+WT.k+0.001);
+    const [sx,sy] = onR(WR.len*(0.12+f*0.76),2.65+Math.sin(f*Math.PI)*0.55), dusk = WT.k/(WT.d+WT.k+0.001);
     ctx.save(); ctx.globalAlpha = sunA; ctx.shadowColor = dusk>0.5?'#ffb27a':'#fff6d8'; ctx.shadowBlur = 40;
     ell(sx,sy,TW*0.45,TW*0.45,dusk>0.5?'#ffc58f':'#fffbe8'); ctx.restore();
   }
   const moonA = WT.n + WT.k*0.3;
   if(moonA>0.02){
-    const [mx,my] = P(0,15.5,2.85); ctx.save(); ctx.globalAlpha = moonA; ctx.shadowColor = '#ffe9c4'; ctx.shadowBlur = 30;
+    const [mx,my] = onL(WL.len*0.7,2.85); ctx.save(); ctx.globalAlpha = moonA; ctx.shadowColor = '#ffe9c4'; ctx.shadowBlur = 30;
     ell(mx,my,TW*0.42,TW*0.42,'#fff2d6'); ctx.restore();
     ctx.save(); ctx.globalAlpha = moonA*0.6; ell(mx-TW*0.1,my-TW*0.08,TW*0.09,TW*0.09,'rgba(200,180,150,.5)'); ell(mx+TW*0.14,my+TW*0.1,TW*0.06,TW*0.06,'rgba(200,180,150,.4)'); ctx.restore();
   }
   const cc = [255*WT.d+255*WT.k+110*WT.n, 255*WT.d+190*WT.k+100*WT.n, 255*WT.d+205*WT.k+170*WT.n].map(Math.round), ca = 0.85*WT.d+0.55*WT.k+0.22*WT.n;
   CLOUDS.forEach(c => {
-    const [px,py] = c.side==='R' ? P(c.u,0,c.z) : P(0,c.u,c.z), s = TW*c.s;
+    const [px,py] = c.side==='R' ? onR(c.u,c.z) : onL(c.u,c.z), s = TW*c.s;
     ctx.fillStyle = `rgba(${cc[0]},${cc[1]},${cc[2]},${ca})`;
     [[0,0,0.55,0.28],[-0.45,0.08,0.4,0.22],[0.45,0.06,0.42,0.24],[0.1,-0.16,0.38,0.24]].forEach(([dx,dy,rx,ry])=>{ctx.beginPath(); ctx.ellipse(px+dx*s,py+dy*s,rx*s,ry*s,0,0,Math.PI*2); ctx.fill()});
   });
   if(!RM && WT.d>0.3){
     ctx.strokeStyle = `rgba(40,50,80,${0.6*WT.d})`; ctx.lineWidth = 1.2;
-    for(let k=0;k<3;k++){const u = (simT*0.7+k*1.1)%32-3, [bx,by] = P(u,0,2.9+k*0.08), fl = Math.sin(T*9+k)*TW*0.06; ctx.beginPath(); ctx.moveTo(bx-TW*0.12,by-fl); ctx.lineTo(bx,by); ctx.lineTo(bx+TW*0.12,by-fl); ctx.stroke()}
+    for(let k=0;k<3;k++){const u = (simT*0.7+k*1.1)%32-3, [bx,by] = onR(u,2.9+k*0.08), fl = Math.sin(T*9+k)*TW*0.06; ctx.beginPath(); ctx.moveTo(bx-TW*0.12,by-fl); ctx.lineTo(bx,by); ctx.lineTo(bx+TW*0.12,by-fl); ctx.stroke()}
   }
   if(!RM){
     const u = (simT*0.55)%34 - 4;
-    if(u>0 && u<GY){const [px,py] = P(0,u,3.12); ctx.fillStyle = Math.sin(T*8)>0 ? '#ff5a6e' : 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(px,py,1.6,0,Math.PI*2); ctx.fill()}
+    if(u>0 && u<WL.len){const [px,py] = onL(u,3.12); ctx.fillStyle = Math.sin(T*8)>0 ? '#ff5a6e' : 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(px,py,1.6,0,Math.PI*2); ctx.fill()}
   }
   ctx.restore();
 }
+// a point on a wall, pulled a little into the room
+const wallIn = (w,u,off) => [w.p0[0]+w.d[0]*u+w.n[0]*off, w.p0[1]+w.d[1]*u+w.n[1]*off];
 function drawSigns(t,N){
-  const sign = (txt,anchor,skew,col,fl,size) => {
-    ctx.save(); ctx.globalAlpha = fl; ctx.translate(anchor[0],anchor[1]); ctx.transform(1,skew,0,1,0,0);
-    ctx.font = `700 ${size}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = col; ctx.shadowBlur = 6+14*N; ctx.fillStyle = col; ctx.fillText(txt,0,0); ctx.shadowBlur = 0; ctx.fillStyle = `rgba(255,255,255,${0.2+0.45*N})`; ctx.fillText(txt,0,0);
-    ctx.restore();
-  };
+  const BW = backWalls(), WL = BW[0], WR = BW[BW.length-1];
   const f1 = RM ? 1 : ((t%6.3)<0.25 && Math.sin(t*70)>0 ? 0.3 : 1), f2 = RM ? 1 : ((t%9.1)<0.15 && Math.sin(t*55)>0 ? 0.3 : 1);
-  sign('WILSON & CO. · 24/7', P(0,11.5,3.2), -0.5, '#20c8ee', f2*(0.55+0.45*N), TW*0.5);
-  drawBigSign(t,N,f1);
+  if(WL !== WR){
+    const m = WL.len/2;
+    plane(wallIn(WL,m-5,0.03),wallIn(WL,m+5,0.03),WL.n[0],WL.n[1],2.85,3.55,(w,h) => {
+      ctx.globalAlpha = f2*(0.55+0.45*N); ctx.font = `700 ${h*0.72}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#20c8ee'; ctx.shadowBlur = 6+14*N; ctx.fillStyle = '#20c8ee'; ctx.fillText('WILSON & CO. · 24/7',w/2,h/2);
+      ctx.shadowBlur = 0; ctx.fillStyle = `rgba(255,255,255,${0.2+0.45*N})`; ctx.fillText('WILSON & CO. · 24/7',w/2,h/2);
+    });
+  }
+  drawBigSign(t,N,f1,WR);
 }
-function drawBigSign(t,N,flick){
-  const u0 = 5.6, u1 = 22.4, z0 = 2.3, z1 = 5.1;
+function drawBigSign(t,N,flick,WR){
+  const m = WR.len/2, u0 = m-8.4, u1 = m+8.4, z0 = 2.3, z1 = 5.1;
   ctx.strokeStyle = '#2c2848'; ctx.lineWidth = Math.max(2,TW*0.08);
-  [8.5,19.5].forEach(u => line(ctx,P(u,0.02,WALL+0.05),P(u,0.02,z0+0.2)));
-  planeY(0.02,u0,u1,z0,z1,(w,h) => {
+  [m-5.5,m+5.5].forEach(u => {const p = wallIn(WR,u,0.02); line(ctx,P(p[0],p[1],WALL+0.05),P(p[0],p[1],z0+0.2))});
+  plane(wallIn(WR,u0,0.02),wallIn(WR,u1,0.02),WR.n[0],WR.n[1],z0,z1,(w,h) => {
     const r = h*0.16;
     ctx.save(); ctx.shadowColor = 'rgba(255,190,90,.6)'; ctx.shadowBlur = 8+20*N;
     rr(0,0,w,h,r); const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#2b1d56'); g.addColorStop(1,'#120c2a'); ctx.fillStyle = g; ctx.fill(); ctx.restore();
@@ -1130,8 +1209,7 @@ function drawBigSign(t,N,flick){
     const fs = h*0.44;
     ctx.font = `800 ${fs}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tg = ctx.createLinearGradient(w*0.15,0,w*0.85,0); tg.addColorStop(0,'#ffd166'); tg.addColorStop(0.5,'#fff7df'); tg.addColorStop(1,'#ff8fc7');
-    ctx.save(); ctx.globalAlpha = 0.75+0.25*flick; ctx.shadowColor = '#ffb86b'; ctx.shadowBlur = 10+16*N; ctx.fillStyle = tg; ctx.fillText('WILSON AI OFFICE', w/2, h*0.45); ctx.restore();
-    ctx.font = `600 ${h*0.13}px ${FB}`; ctx.fillStyle = 'rgba(255,232,190,.85)'; ctx.fillText('Wilson & Co. · 7 位 AI 员工 · 24/7 在线', w/2, h*0.78);
+    ctx.save(); ctx.globalAlpha = 0.75+0.25*flick; ctx.shadowColor = '#ffb86b'; ctx.shadowBlur = 10+16*N; ctx.fillStyle = tg; ctx.fillText('WILSON AI OFFICE', w/2, h*0.52); ctx.restore();
   });
 }
 function drawZoneLabels(){
@@ -1150,8 +1228,7 @@ function drawZoneLabels(){
   });
 }
 function drawTV(t){
-  const [ax,ay] = P(0.95,0.06,2.85), w = 3.6*TW/2, h = 1.6*TH;
-  ctx.save(); ctx.translate(ax,ay); ctx.transform(1,0.5,0,1,0,0);
+  planeY(0.06,0.95,4.55,1.25,2.85,(w,h) => {
   ctx.shadowColor = '#3ee6ff'; ctx.shadowBlur = 16; ctx.fillStyle = '#0a0920'; ctx.fillRect(0,0,w,h); ctx.shadowBlur = 0;
   ctx.strokeStyle = '#34315f'; ctx.lineWidth = 2; ctx.strokeRect(0,0,w,h);
   const fs = Math.max(5, TW*0.15);
@@ -1168,7 +1245,7 @@ function drawTV(t){
   ctx.lineWidth = Math.max(2,TW*0.06); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.arc(rcx,rcy,r,0,Math.PI*2); ctx.stroke();
   ctx.strokeStyle = '#4dffa6'; ctx.beginPath(); ctx.arc(rcx,rcy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*pr); ctx.stroke();
   ctx.fillStyle = '#eceaff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `600 ${fs}px ${FM}`; ctx.fillText(Math.round(pr*100)+'%',rcx,rcy);
-  ctx.restore();
+  });
 }
 function drawHQFloor(t){
   const [cx,cy] = P(C.x,C.y,0);
@@ -1186,7 +1263,7 @@ function drawTable(){
   ctx.save(); ctx.shadowColor = '#b48cff'; ctx.shadowBlur = 14;
   ctx.fillStyle = '#2d2675'; ctx.strokeStyle = rgba('#b48cff',.95); ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.ellipse(tx,ty,rx,ry,0,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
-  ctx.save(); ctx.translate(tx,ty); ctx.transform(1,0.5,-1,0.5,0,0);
+  {const [hx,hy,a,b,c,d] = floorXf(C.x,C.y,cz); ctx.save(); ctx.translate(hx,hy); ctx.transform(a,b,c,d,0,0);}
   ctx.font = `700 ${TW*0.5}px ${FD}`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle = rgba('#3ee6ff',.85); ctx.fillText('HQ',0,0); ctx.restore();
   const hh = 2.4*TH, bw = rx*0.55, al = hq;
   const gr = ctx.createLinearGradient(0,ty-hh,0,ty); gr.addColorStop(0,'rgba(62,230,255,0)'); gr.addColorStop(1,rgba('#3ee6ff',0.35*al));
@@ -1307,8 +1384,10 @@ function drawPet(id,t,refl){
   const ph = t*11+a.phase, seated = atSeat(id);
   let back = false;
   if(moving) back = a.sdy < -0.2;
-  else if(id!=='wilson' && seated) back = ['working','routine','thinking'].includes(a.state) && !saying && !surprised;
-  else back = a.facePl==='back' && !greeting && !happy;
+  else if(id!=='wilson' && seated) back = ['working','routine','thinking'].includes(a.state) && !saying && !surprised && depth(a.zone[0]+2.85,a.zone[1]+1.07) < depth(a.seat.x,a.seat.y);
+  else if(id!=='wilson' && seated) back = false;
+  else if(id==='wilson' && seated) back = faceAway([0,1]);
+  else back = !!a.facePl && faceAway(a.facePl) && !greeting && !happy;
   let z = 0, sq = 1, tilt = 0;
   if(moving){z = Math.abs(Math.sin(ph))*0.22; sq = 1+Math.cos(ph*2)*0.06; tilt = Math.sin(ph)*0.07}
   else if(a.state==='working' || a.state==='routine'){const k = Math.abs(Math.sin(t*8+a.phase)); z = k*0.03; sq = 1-k*0.03}
@@ -1482,7 +1561,7 @@ function updatePets(dt,rdt){
     if(p.jump>0) p.jump = Math.max(0, p.jump-rdt);
     if(p.tg){
       const dx = p.tg[0]-p.pos.x, dy = p.tg[1]-p.pos.y, d = Math.hypot(dx,dy), st = (p.kind==='dog' ? 1.6 : 0.85)*(p.run ? 1.8 : 1)*dt;
-      if(Math.abs(dx-dy)>0.02) p.dir = (dx-dy)>0 ? 1 : -1;
+      {const [ra,rb] = rotN(dx,dy); if(Math.abs(ra-rb)>0.02) p.dir = (ra-rb)>0 ? 1 : -1;}
       p.z = 0;
       if(d<=st){
         p.pos.x = p.tg[0]; p.pos.y = p.tg[1]; p.z = p.tg[2]||0; p.tg = null;
@@ -1708,6 +1787,7 @@ function drawBanner(now){
 }
 function camT(c){c.setTransform(DPR,0,0,DPR,0,0); c.translate(W/2+cam.x, H/2+cam.y); c.scale(zoom,zoom); c.translate(-W/2,-H/2)}
 function draw(t,now){
+  if(bgView === null || Math.abs(bgView - VIEW) > 1e-4){bgView = VIEW; renderAllBG()}
   if(!cv.width || !cv.height || !lay.width || !BG.day.width) return;
   T = t; const N = nightK();
   zoom = 1.025 + (RM ? 0 : Math.sin(t*0.25)*0.006);
@@ -1725,11 +1805,11 @@ function draw(t,now){
   ctx.restore();
   // object layer, tinted at night
   ctx = lctx; ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,lay.width,lay.height); camT(ctx);
-  const items = FURN.slice();
-  TEAM.forEach(id => {const a = AG[id], [x0,y0] = a.zone; items.push({k:x0+y0+3.8, f:()=>drawDesk(id,t)}); items.push({k:a.seat.x+a.seat.y-0.02, f:()=>stool(id)})});
-  ALL.forEach(id => {const a = AG[id]; items.push({k:a.pos.x+a.pos.y, f:()=>drawPet(id,t,false)})});
-  items.push({k:bot.pos.x+bot.pos.y, f:drawBot});
-  PETS.forEach(p => items.push({k:p.pos.x+p.pos.y+(p.z?0.6:0), f:()=>drawAnimal(p,t)}));
+  const items = FURN.map(it => ({k: it.at ? depth(it.at[0],it.at[1]) : it.k, f: it.f}));
+  TEAM.forEach(id => {const a = AG[id], [x0,y0] = a.zone; items.push({k:depth(x0+2.7,y0+1.3), f:()=>drawDesk(id,t)}); items.push({k:depth(a.seat.x,a.seat.y)-0.02, f:()=>stool(id)})});
+  ALL.forEach(id => {const a = AG[id]; items.push({k:depth(a.pos.x,a.pos.y), f:()=>drawPet(id,t,false)})});
+  items.push({k:depth(bot.pos.x,bot.pos.y), f:drawBot});
+  PETS.forEach(p => items.push({k:depth(p.pos.x,p.pos.y)+(p.z?0.6:0), f:()=>drawAnimal(p,t)}));
   items.sort((p,q)=>p.k-q.k).forEach(it=>it.f());
   if(N>0.01){ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = `rgba(16,12,48,${0.4*N})`; ctx.fillRect(0,0,lay.width,lay.height); ctx.globalCompositeOperation = 'source-over'}
   ctx = mainCtx; ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(lay,0,0); camT(ctx);
@@ -1750,7 +1830,7 @@ function draw(t,now){
   });
   drawBeams();
   drawZoneLabels();
-  ALL.slice().sort((p,q)=>(AG[p].pos.x+AG[p].pos.y)-(AG[q].pos.x+AG[q].pos.y)).forEach(id => drawOverlay(id,t,now));
+  ALL.slice().sort((p,q)=>depth(AG[p].pos.x,AG[p].pos.y)-depth(AG[q].pos.x,AG[q].pos.y)).forEach(id => drawOverlay(id,t,now));
   drawEmotes(now); drawStamp(now);
   confetti.forEach(p => {const fl = Math.abs(Math.cos(p.rot*1.7)); ctx.save(); ctx.globalAlpha = Math.min(1,p.life); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2*fl,p.w,p.h*fl+0.5); ctx.restore()});
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -2334,8 +2414,8 @@ function hit(e){
   return ALL.find(id=>{const a=AG[id], [px,py]=P(a.pos.x,a.pos.y,a.z); return Math.hypot(px-x,py-TW*0.5*PS*0.9-y) < TW*0.6*PS});
 }
 function hitBot(e){const [x,y] = toWorld(e), [px,py] = P(bot.pos.x,bot.pos.y,0.1); return Math.hypot(px-x,(py-y)*1.6) < TW*0.45}
-cv.addEventListener('click',e=>{const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitPet(e)){} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
-cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x:e.clientX-r.left,y:e.clientY-r.top}; cv.style.cursor = (hit(e)||hitBot(e)||PETS.some(p=>{const [x,y]=toWorld(e),[px,py]=P(p.pos.x,p.pos.y,p.z||0);return Math.hypot(px-x,py-TW*0.36-y)<TW*0.5}))?'pointer':'default'});
+cv.addEventListener('click',e=>{if(dragMoved){dragMoved=false; return} const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitPet(e)){} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x:e.clientX-r.left,y:e.clientY-r.top}; cv.style.cursor = dragging ? 'grabbing' : (hit(e)||hitBot(e)||PETS.some(p=>{const [x,y]=toWorld(e),[px,py]=P(p.pos.x,p.pos.y,p.z||0);return Math.hypot(px-x,py-TW*0.36-y)<TW*0.5}))?'pointer':'grab'});
 cv.addEventListener('mouseleave',()=>{mouse=null});
 
 ALL.forEach(id=>{renderCard(id); renderSpark(id)});
