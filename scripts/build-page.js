@@ -32,7 +32,7 @@ rep('<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody">
   <dialog id="docDlg" class="dlg" aria-labelledby="docTitle"><div class="rd"><div class="rdh"><div><h3 id="docTitle"></h3><p>AI 员工交付的完整内容</p></div><button type="button" class="x" id="docClose" aria-label="关闭">✕</button></div><pre class="docbody" id="docBody"></pre><div class="timgs big" id="docImgs"></div><div class="rdf"><button type="button" class="go" id="docCopy">复制全文</button></div></div></dialog>
   <dialog id="memDlg" class="dlg" aria-label="团队成员"><div class="rd"><div class="rdh"><div><h3>团队成员</h3><p>批准同事进入办公室</p></div><button type="button" class="x" id="memClose" aria-label="关闭">✕</button></div><div id="memBody" class="autos"></div></div></dialog>
   <div class="toast" id="toast" hidden role="status"></div>
-  <div class="gate" id="gate"><div class="gcard"><h2>Wilson 的 AI 办公室</h2><p id="gmsg">正在连接…</p><button type="button" class="go" id="gbtn" hidden></button><p class="tip" id="gnote"></p></div></div>`);
+  <div class="gate" id="gate"><div class="gcard"><h2>MACTION AI 办公室</h2><p id="gmsg">正在连接…</p><button type="button" class="go" id="gbtn" hidden></button><p class="tip" id="gnote"></p></div></div>`);
 rep("<script>\n(() => {", '<script src="org.js"></script>\n<script>\n(() => {');
 
 /* ---- CSS ---- */
@@ -71,7 +71,7 @@ rep("'24/7 · '+KPI.kiki[0].v+' 对话'", "'24/7 在线'");
 rep(/<div class="kpis">\$\{KPI\[id\][^\n]*<\/div>\n/, '<div class="kpis"><div><span>今日完成</span><b class="s0">0</b></div><div><span>待审批</span><b class="s1">0</b></div><div><span>进行中</span><b class="s2">0</b></div></div>\n');
 cut("const ovEl = document.createElement('article');", "}, 2000);\n", `const ovEl = document.createElement('article');
 ovEl.className = 'dept ov'; ovEl.style.setProperty('--c','#ffd166');
-ovEl.innerHTML = \`<div class="dhead"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="22" width="6" height="12" rx="2" fill="currentColor"/><rect x="14" y="14" width="6" height="20" rx="2" fill="currentColor"/><rect x="23" y="18" width="6" height="16" rx="2" fill="currentColor"/><rect x="32" y="8" width="4" height="26" rx="2" fill="currentColor"/></svg><div><div class="dname">公司今日</div><div class="ddept">Wilson &amp; Co. · 实时</div></div><span class="pill" style="--pc:#4dffa6">LIVE</span></div>
+ovEl.innerHTML = \`<div class="dhead"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="22" width="6" height="12" rx="2" fill="currentColor"/><rect x="14" y="14" width="6" height="20" rx="2" fill="currentColor"/><rect x="23" y="18" width="6" height="16" rx="2" fill="currentColor"/><rect x="32" y="8" width="4" height="26" rx="2" fill="currentColor"/></svg><div><div class="dname">公司今日</div><div class="ddept">MACTION · 实时</div></div><span class="pill" style="--pc:#4dffa6">LIVE</span></div>
   <div class="kpis k4"><div><span>今日派出</span><b id="ov0">0</b></div><div><span>今日完成</span><b id="ov1">0</b></div><div><span>待你审批</span><b id="ov2">0</b></div><div><span>自动化开启</span><b id="ov3">0</b></div></div>\`;
 deptsEl.appendChild(ovEl);
 `);

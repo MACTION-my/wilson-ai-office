@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WILSON AI Office</title>
+<title>MACTION AI Office</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -333,9 +333,9 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
 <div class="app">
   <header class="top">
     <div class="brand">
-      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 9 L11 23 L16 13 L21 23 L26 9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 23 L9 9 L16 19 L23 9 L26 23" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div>
-        <h1><em>WILSON</em> AI Office</h1>
+        <h1><em>MACTION</em> AI Office</h1>
       </div>
     </div>
     <div class="tools">
@@ -1182,8 +1182,8 @@ function drawSigns(t,N){
     const m = WL.len/2;
     plane(wallIn(WL,m-5,0.03),wallIn(WL,m+5,0.03),WL.n[0],WL.n[1],2.85,3.55,(w,h) => {
       ctx.globalAlpha = f2*(0.55+0.45*N); ctx.font = `700 ${h*0.72}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.shadowColor = '#20c8ee'; ctx.shadowBlur = 6+14*N; ctx.fillStyle = '#20c8ee'; ctx.fillText('WILSON & CO. · 24/7',w/2,h/2);
-      ctx.shadowBlur = 0; ctx.fillStyle = `rgba(255,255,255,${0.2+0.45*N})`; ctx.fillText('WILSON & CO. · 24/7',w/2,h/2);
+      ctx.shadowColor = '#20c8ee'; ctx.shadowBlur = 6+14*N; ctx.fillStyle = '#20c8ee'; ctx.fillText('MACTION · 24/7',w/2,h/2);
+      ctx.shadowBlur = 0; ctx.fillStyle = `rgba(255,255,255,${0.2+0.45*N})`; ctx.fillText('MACTION · 24/7',w/2,h/2);
     });
   }
   drawBigSign(t,N,f1,WR);
@@ -1206,7 +1206,7 @@ function drawBigSign(t,N,flick,WR){
     const fs = h*0.44;
     ctx.font = `800 ${fs}px ${FD}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tg = ctx.createLinearGradient(w*0.15,0,w*0.85,0); tg.addColorStop(0,'#ffd166'); tg.addColorStop(0.5,'#fff7df'); tg.addColorStop(1,'#ff8fc7');
-    ctx.save(); ctx.globalAlpha = 0.75+0.25*flick; ctx.shadowColor = '#ffb86b'; ctx.shadowBlur = 10+16*N; ctx.fillStyle = tg; ctx.fillText('WILSON AI OFFICE', w/2, h*0.52); ctx.restore();
+    ctx.save(); ctx.globalAlpha = 0.75+0.25*flick; ctx.shadowColor = '#ffb86b'; ctx.shadowBlur = 10+16*N; ctx.fillStyle = tg; ctx.fillText('MACTION', w/2, h*0.52); ctx.restore();
   });
 }
 function drawZoneLabels(){
@@ -1229,7 +1229,7 @@ function drawTV(t){
   ctx.shadowColor = '#3ee6ff'; ctx.shadowBlur = 16; ctx.fillStyle = '#0a0920'; ctx.fillRect(0,0,w,h); ctx.shadowBlur = 0;
   ctx.strokeStyle = '#34315f'; ctx.lineWidth = 2; ctx.strokeRect(0,0,w,h);
   const fs = Math.max(5, TW*0.15);
-  ctx.font = `600 ${fs}px ${FM}`; ctx.fillStyle = '#ffd166'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('WILSON & CO. · LIVE',5,4);
+  ctx.font = `600 ${fs}px ${FM}`; ctx.fillStyle = '#ffd166'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('MACTION · LIVE',5,4);
   const bw = w*0.058;
   TEAM.forEach((id,i) => {
     const a = AG[id], act = a.act.slice(-6).reduce((s,v)=>s+v,0);
@@ -1685,7 +1685,7 @@ function hitPet(e){
 }
 function drawOverlay(id,t,now){
   const a = AG[id], c = a.tag || a.color, fs = Math.max(10, Math.min(13, TW*0.42));
-  const [px,py0] = P(a.pos.x, a.pos.y, a.z), py = PROJ ? P(a.pos.x, a.pos.y, (a.z||0)+1.36)[1] : py0 - TW*0.5*PS*2.35;
+  const [px,py0] = P(a.pos.x, a.pos.y, a.z), py = PROJ ? P(a.pos.x, a.pos.y, (a.z||0)+1.5)[1] : py0 - TW*0.5*PS*2.35;
   ctx.font = `600 ${fs}px ${FB}`; const tw = ctx.measureText(a.name).width+14, th = fs+6;
   rr(px-tw/2,py-th,tw,th,th/2); ctx.fillStyle = 'rgba(8,6,24,.85)'; ctx.fill(); ctx.strokeStyle = rgba(c,.8); ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(a.name, px, py-th/2+0.5);
@@ -1896,7 +1896,7 @@ TEAM.forEach(id => {
 });
 const ovEl = document.createElement('article');
 ovEl.className = 'dept ov'; ovEl.style.setProperty('--c','#ffd166');
-ovEl.innerHTML = `<div class="dhead"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="22" width="6" height="12" rx="2" fill="currentColor"/><rect x="14" y="14" width="6" height="20" rx="2" fill="currentColor"/><rect x="23" y="18" width="6" height="16" rx="2" fill="currentColor"/><rect x="32" y="8" width="4" height="26" rx="2" fill="currentColor"/></svg><div><div class="dname">公司今日</div><div class="ddept">Wilson &amp; Co. · 实时（示例）</div></div><span class="pill" style="--pc:#4dffa6">LIVE</span></div>
+ovEl.innerHTML = `<div class="dhead"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="22" width="6" height="12" rx="2" fill="currentColor"/><rect x="14" y="14" width="6" height="20" rx="2" fill="currentColor"/><rect x="23" y="18" width="6" height="16" rx="2" fill="currentColor"/><rect x="32" y="8" width="4" height="26" rx="2" fill="currentColor"/></svg><div><div class="dname">公司今日</div><div class="ddept">MACTION · 实时（示例）</div></div><span class="pill" style="--pc:#4dffa6">LIVE</span></div>
   <div class="kpis k4"><div><span>订单</span><b id="ov0"></b></div><div><span>广告线索</span><b id="ov1"></b></div><div><span>WhatsApp 对话</span><b id="ov2"></b></div><div><span>社媒互动</span><b id="ov3"></b></div></div>`;
 deptsEl.appendChild(ovEl);
 function renderKPI(id){const el = cards[id]; if(!el) return; el.querySelectorAll('b[data-k]').forEach(b=>{b.textContent = fmt(KPI[id][+b.dataset.k])})}
