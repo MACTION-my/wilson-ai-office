@@ -373,6 +373,7 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
       <div class="mtag"><span id="mtag">当前任务：<b>日常运营中</b></span></div>
       <div class="stagebar">
         <div class="seg rot" role="group" aria-label="旋转视角"><button type="button" id="rotL" aria-label="向左转 90 度">⟲</button><button type="button" id="orbitBtn" aria-pressed="false">环绕</button><button type="button" id="rotR" aria-label="向右转 90 度">⟳</button></div>
+        <div class="seg rot" role="group" aria-label="远近"><button type="button" id="zOut" aria-label="拉远">－</button><button type="button" id="zIn" aria-label="拉近">＋</button></div>
         <div class="seg" role="group" aria-label="时间">
           <button data-tod="auto" aria-pressed="true">自动昼夜</button>
           <button data-tod="day" aria-pressed="false">白天</button>
@@ -598,7 +599,8 @@ let VIEW = 0, VIEWT = 0, vCos = 1, vSin = 0, orbit = false, bgView = null;
 const RCX = GX/2, RCY = GY/2;
 function setView(a){VIEW = a; vCos = Math.cos(a); vSin = Math.sin(a)}
 const rotN = (nx,ny) => [nx*vCos - ny*vSin, nx*vSin + ny*vCos];
-const P = (x,y,z=0) => {const dx = x-RCX, dy = y-RCY, a = dx*vCos - dy*vSin, b = dx*vSin + dy*vCos; return [CX+(a-b)*TW/2, CY+(a+b)*TH/2 - z*TH]};
+let PROJ = null;
+const P = (x,y,z=0) => {if(PROJ) return PROJ(x,y,z); const dx = x-RCX, dy = y-RCY, a = dx*vCos - dy*vSin, b = dx*vSin + dy*vCos; return [CX+(a-b)*TW/2, CY+(a+b)*TH/2 - z*TH]};
 const depth = (x,y) => {const dx = x-RCX, dy = y-RCY; return (dx*vCos - dy*vSin) + (dx*vSin + dy*vCos)};
 const faceVis = (nx,ny) => {const [a,b] = rotN(nx,ny); return a+b > 0.02};
 const faceAway = v => {const [a,b] = rotN(v[0],v[1]); return a+b < -0.05};
@@ -1128,13 +1130,15 @@ window.addEventListener('pointermove', e => {
   if(!dragFrom) return;
   const dx = e.clientX - dragFrom.x;
   if(!dragging && Math.abs(dx) > 6){dragging = true; dragMoved = true; orbit = false; syncOrbit(); try{cv.setPointerCapture(e.pointerId)}catch(_){}}
-  if(dragging){VIEWT = dragFrom.v + dx*0.008; cv.style.cursor = 'grabbing'}
+  if(dragging){if(!PROJ) VIEWT = dragFrom.v + dx*0.008; cv.style.cursor = 'grabbing'}
 });
 window.addEventListener('pointerup', () => {dragFrom = null; if(dragging){dragging = false; cv.style.cursor = 'grab'}});
 function turn(step){orbit = false; syncOrbit(); VIEWT = Math.round((VIEWT + step*Math.PI/2)/(Math.PI/2))*(Math.PI/2)}
-function syncOrbit(){const b = document.getElementById('orbitBtn'); if(b) b.setAttribute('aria-pressed', orbit ? 'true' : 'false')}
-document.getElementById('rotL')?.addEventListener('click', () => turn(-1));
-document.getElementById('rotR')?.addEventListener('click', () => turn(1));
+function syncOrbit(){window.O3?.setOrbit?.(orbit); const b = document.getElementById('orbitBtn'); if(b) b.setAttribute('aria-pressed', orbit ? 'true' : 'false')}
+document.getElementById('rotL')?.addEventListener('click', () => window.O3 ? O3.turn(-1) : turn(-1));
+document.getElementById('rotR')?.addEventListener('click', () => window.O3 ? O3.turn(1) : turn(1));
+document.getElementById('zIn')?.addEventListener('click', () => window.O3 && O3.zoom(1));
+document.getElementById('zOut')?.addEventListener('click', () => window.O3 && O3.zoom(-1));
 document.getElementById('orbitBtn')?.addEventListener('click', () => {orbit = !orbit; syncOrbit()});
 
 /* ---------- dynamic drawing ---------- */
@@ -1688,7 +1692,7 @@ function hitPet(e){
 }
 function drawOverlay(id,t,now){
   const a = AG[id], c = a.tag || a.color, fs = Math.max(10, Math.min(13, TW*0.42));
-  const [px,py0] = P(a.pos.x, a.pos.y, a.z), py = py0 - TW*0.5*PS*2.35;
+  const [px,py0] = P(a.pos.x, a.pos.y, a.z), py = PROJ ? P(a.pos.x, a.pos.y, (a.z||0)+1.36)[1] : py0 - TW*0.5*PS*2.35;
   ctx.font = `600 ${fs}px ${FB}`; const tw = ctx.measureText(a.name).width+14, th = fs+6;
   rr(px-tw/2,py-th,tw,th,th/2); ctx.fillStyle = 'rgba(8,6,24,.85)'; ctx.fill(); ctx.strokeStyle = rgba(c,.8); ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(a.name, px, py-th/2+0.5);
@@ -1787,6 +1791,7 @@ function drawBanner(now){
 }
 function camT(c){c.setTransform(DPR,0,0,DPR,0,0); c.translate(W/2+cam.x, H/2+cam.y); c.scale(zoom,zoom); c.translate(-W/2,-H/2)}
 function draw(t,now){
+  if(PROJ){draw3D(t,now); return}
   if(bgView === null || Math.abs(bgView - VIEW) > 1e-4){bgView = VIEW; renderAllBG()}
   if(!cv.width || !cv.height || !lay.width || !BG.day.width) return;
   T = t; const N = nightK();
@@ -1845,6 +1850,30 @@ function frame(now){
   if(now-clockAt > 500){clockAt = now; $('#clock').textContent = clockText()}
   requestAnimationFrame(frame);
 }
+
+/* ---------- 3D mode: office3d.js draws the scene; this canvas only draws labels and effects on top ---------- */
+function draw3D(t,now){
+  T = t; zoom = 1; cam.x = 0; cam.y = 0; ctx = mainCtx;
+  if(window.O3 && O3.render) O3.render(t);
+  ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,W,H);
+  const ins = window.O3 ? O3.inside : 1;
+  sparks.forEach(p => {
+    const al = Math.max(0,p.life/p.max);
+    if(p.dust) return;
+    ctx.fillStyle = rgba(p.c,al); const s = p.s;
+    ctx.beginPath(); ctx.moveTo(p.x,p.y-s*1.6); ctx.lineTo(p.x+s*0.45,p.y); ctx.lineTo(p.x,p.y+s*1.6); ctx.lineTo(p.x-s*0.45,p.y); ctx.closePath(); ctx.fill();
+  });
+  if(ins > 0.02){
+    ctx.save(); ctx.globalAlpha = ins;
+    drawBeams(); drawZoneLabels();
+    ALL.slice().sort((p,q)=>P(AG[p].pos.x,AG[p].pos.y)[1]-P(AG[q].pos.x,AG[q].pos.y)[1]).forEach(id => drawOverlay(id,t,now));
+    ctx.restore();
+  }
+  drawEmotes(now); drawStamp(now);
+  confetti.forEach(p => {const fl = Math.abs(Math.cos(p.rot*1.7)); ctx.save(); ctx.globalAlpha = Math.min(1,p.life); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2*fl,p.w,p.h*fl+0.5); ctx.restore()});
+  ctx.setTransform(DPR,0,0,DPR,0,0); drawBanner(now);
+}
+window.SIM = {AG, ALL, TEAM, PETS, bot, WT, C, GX, GY, atSeat, setTW(v){TW = v; TH = v/2}, use3D(f){PROJ = f}};
 
 /* ---------- dashboard UI ---------- */
 const PET_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="11" cy="11" r="5" fill="currentColor" opacity=".7"/><circle cx="29" cy="11" r="5" fill="currentColor" opacity=".7"/><rect x="5" y="9" width="30" height="28" rx="12" fill="currentColor"/><ellipse cx="15" cy="22" rx="2.4" ry="3" fill="#1a1030"/><ellipse cx="25" cy="22" rx="2.4" ry="3" fill="#1a1030"/><circle cx="15.8" cy="21" r=".9" fill="#fff"/><circle cx="25.8" cy="21" r=".9" fill="#fff"/><path d="M17.5 28 Q20 30.5 22.5 28" stroke="#1a1030" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';
@@ -2414,7 +2443,7 @@ function hit(e){
   return ALL.find(id=>{const a=AG[id], [px,py]=P(a.pos.x,a.pos.y,a.z); return Math.hypot(px-x,py-TW*0.5*PS*0.9-y) < TW*0.6*PS});
 }
 function hitBot(e){const [x,y] = toWorld(e), [px,py] = P(bot.pos.x,bot.pos.y,0.1); return Math.hypot(px-x,(py-y)*1.6) < TW*0.45}
-cv.addEventListener('click',e=>{if(dragMoved){dragMoved=false; return} const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitPet(e)){} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
+cv.addEventListener('click',e=>{if(dragMoved){dragMoved=false; return} if(window.O3 && O3.inside < 0.5){O3.enter(); return} const id=hit(e); if(id){greet(id); if(id!=='wilson') setTimeout(()=>openRole(id), 350)} else if(hitPet(e)){} else if(hitBot(e)){bot.spin = 1.2; pop('bot','♪','#3ee6ff',2)}});
 cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(); mouse={x:e.clientX-r.left,y:e.clientY-r.top}; cv.style.cursor = dragging ? 'grabbing' : (hit(e)||hitBot(e)||PETS.some(p=>{const [x,y]=toWorld(e),[px,py]=P(p.pos.x,p.pos.y,p.z||0);return Math.hypot(px-x,py-TW*0.36-y)<TW*0.5}))?'pointer':'grab'});
 cv.addEventListener('mouseleave',()=>{mouse=null});
 
@@ -2428,4 +2457,6 @@ if(document.fonts) document.fonts.ready.then(()=>renderAllBG());
 requestAnimationFrame(frame);
 })();
 </script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module" src="office3d.js"></script>
 <script type="module" src="app.js"></script>

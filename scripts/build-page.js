@@ -83,6 +83,6 @@ cut("const logEl = $('#log'); let evCount = 0;", "$('#evn').textContent = (++evC
 cut("/* ---------- roles & automations ---------- */", null,
   src("scripts/page-src/live-mid.js") + "\n" + src("scripts/page-src/idle.js") + src("scripts/page-src/live-work.js"));
 
-s = s.trimEnd() + '\n<script type="module" src="app.js"></script>\n';
+s = s.trimEnd() + '\n<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>\n<script type="module" src="office3d.js"></script>\n<script type="module" src="app.js"></script>\n';
 fs.writeFileSync(path.join(root, "public", "index.html"), s);
 console.log("public/index.html written", s.length, "chars");
