@@ -561,56 +561,59 @@ box(building, 0.4, 10.4, 0.5, 12.6, F0 + 0.6, F0 + 2.3, mat('#ffffff', { roughne
 // HQ round table
 mesh(cyl(1.4, 1.4, 0.08, 48), mat('#f8f7ff', { roughness: 0.25, metalness: 0.1 }), C.x, F0 + 0.78, C.y, building);
 mesh(cyl(0.25, 0.4, 0.74, 16), deskLeg, C.x, F0 + 0.38, C.y, building);
-// a golden-red dragon circling a glowing, spinning pearl above the HQ table
-const DH = F0 + 1.75;
-const pearlTex = canvasTex(256, 128, (g, w, h) => {
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#fff6d8'); gr.addColorStop(0.5, '#ffd27a'); gr.addColorStop(1, '#ff9a3c'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  g.strokeStyle = 'rgba(255,90,40,.75)'; g.lineWidth = 7;
-  for (let k = 0; k < 3; k++) { g.beginPath(); for (let x = 0; x <= w; x += 4) { const y = h / 2 + Math.sin(x / w * Math.PI * 2 * 2 + k * 2.1) * h * 0.3; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
-  g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(w * 0.3, h * 0.3, 10, 0, Math.PI * 2); g.fill();
+// a big glowing planet with clouds, an atmosphere, a tilted ring and two moons, floating above the HQ table
+const PH0 = F0 + 2.55, PR = 1.0;
+seed = 42;
+const waves = Array.from({ length: 9 }, () => [1 + Math.floor(rnd() * 4), 1 + rnd() * 3, rnd() * 6.28, rnd() * 6.28, 0.4 + rnd() * 0.6]);
+const landF = (lon, lat) => waves.reduce((v, [a, b, p, q, w]) => v + w * Math.sin(a * lon + p) * Math.cos(b * lat + q), 0) / 3;
+const planetTex = canvasTex(1024, 512, (g, w, h) => {
+  const img = g.createImageData(w, h), d = img.data;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const lon = x / w * Math.PI * 2, lat = (y / h - 0.5) * Math.PI, f = landF(lon, lat) + 0.08 * Math.sin(lon * 13 + lat * 7), pol = Math.abs(lat) / (Math.PI / 2);
+    let c;
+    if (pol > 0.86 + 0.04 * Math.sin(lon * 5)) c = [240, 248, 255];
+    else if (f > 0.12) { const e = Math.min(1, (f - 0.12) * 3); c = pol > 0.6 ? [150 + 60 * e, 160, 120] : [70 + 120 * e * e, 160 - 30 * e, 70 - 20 * e]; }
+    else if (f > 0.06) c = [235, 215, 160];
+    else { const dp = Math.min(1, (0.06 - f) * 2.5); c = [20 + 30 * (1 - dp), 110 + 70 * (1 - dp), 200 + 40 * (1 - dp)]; }
+    const i = (y * w + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
 });
-const pearl = mesh(sph(0.24, 32, 24), new THREE.MeshPhysicalMaterial({ map: pearlTex, emissiveMap: pearlTex, emissive: '#ff8a2a', emissiveIntensity: 0.7, roughness: 0.1, clearcoat: 1 }), C.x, DH, C.y, building, false);
-const flames = [0, 1, 2].map(k => { const f = mesh(new THREE.TorusGeometry(0.28 + k * 0.03, 0.012, 6, 40), new THREE.MeshBasicMaterial({ color: k ? '#ffb347' : '#ff6a3d', transparent: true, opacity: 0.8 }), C.x, DH, C.y, building, false); return f; });
-glow(C.x, DH, C.y, '#ff9a3c', 1.6, building);
-const dRed = mat('#d71f2b', { roughness: 0.35, metalness: 0.35, emissive: '#5a0008', emissiveIntensity: 0.3 });
-const dGold = mat('#f4b733', { roughness: 0.3, metalness: 0.7, emissive: '#6a4200', emissiveIntensity: 0.25 });
-const dCream = mat('#ffe9b0', { roughness: 0.5 });
-const DN = 46, dSeg = [];
-for (let i = 0; i < DN; i++) {
-  const s = i / (DN - 1), r = 0.11 * (1 - s * 0.72) + 0.02;
-  const g = new THREE.Group(); building.add(g);
-  const b = mesh(sph(r, 14, 10), i % 4 === 0 ? dGold : dRed, 0, 0, 0, g, false); b.scale.set(1, 1, 1.5);
-  mesh(sph(r * 0.8, 10, 8), dCream, 0, -r * 0.35, 0, g, false).scale.set(0.9, 0.7, 1.5);
-  if (i % 2 === 0 && i > 2) { const fin = mesh(new THREE.ConeGeometry(r * 0.45, r * 1.3, 6), dGold, 0, r * 1.05, -r * 0.2, g, false); fin.rotation.x = -0.5; }
-  if (i === 14 || i === 30) [-1, 1].forEach(sd => { const leg = mesh(new THREE.CapsuleGeometry(0.025, 0.12, 4, 8), dRed, sd * r * 1.1, -r * 0.6, 0, g, false); leg.rotation.set(0.7, 0, sd * 0.6); [-1, 0, 1].forEach(c => { const cl = mesh(new THREE.ConeGeometry(0.012, 0.05, 5), dGold, sd * (r * 1.1 + 0.05) + c * 0.015, -r * 0.6 - 0.08, 0.06, g, false); cl.rotation.x = 1.4; }); });
-  dSeg.push(g);
-}
-const tailFin = mesh(new THREE.ConeGeometry(0.06, 0.22, 4), dGold, 0, 0, 0, dSeg[DN - 1], false); tailFin.rotation.x = -Math.PI / 2; tailFin.position.z = -0.12; tailFin.scale.x = 2.2;
-// head
-const dHead = new THREE.Group(); building.add(dHead);
-mesh(sph(0.15, 20, 14), dRed, 0, 0, 0, dHead, false).scale.set(1.05, 0.9, 1.2);
-mesh(sph(0.1, 16, 12), dRed, 0, -0.02, 0.17, dHead, false).scale.set(1.1, 0.75, 1.3);
-const dJaw = mesh(sph(0.085, 14, 10), dCream, 0, -0.08, 0.15, dHead, false); dJaw.scale.set(1, 0.45, 1.4);
-mesh(sph(0.03, 10, 8), dGold, 0, 0.0, 0.3, dHead, false);
-[-1, 1].forEach(sd => {
-  mesh(sph(0.04, 12, 10), new THREE.MeshStandardMaterial({ color: '#fff35c', emissive: '#ffcc00', emissiveIntensity: 0.8 }), sd * 0.085, 0.06, 0.1, dHead, false);
-  mesh(sph(0.018, 8, 6), mat('#140806'), sd * 0.095, 0.065, 0.135, dHead, false);
-  const horn = mesh(new THREE.ConeGeometry(0.025, 0.24, 8), dGold, sd * 0.07, 0.16, -0.08, dHead, false); horn.rotation.set(-1.0, 0, -sd * 0.3);
-  const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(sd * 0.06, -0.03, 0.26), new THREE.Vector3(sd * 0.2, 0.0, 0.2), new THREE.Vector3(sd * 0.32, -0.08, 0.02), new THREE.Vector3(sd * 0.42, -0.02, -0.15)]);
-  mesh(new THREE.TubeGeometry(curve, 16, 0.008, 5, false), dGold, 0, 0, 0, dHead, false);
-  for (let k = 0; k < 3; k++) { const m = mesh(new THREE.ConeGeometry(0.035, 0.16, 6), mat('#ff8a2a', { roughness: 0.6 }), sd * (0.08 + k * 0.03), 0.02 - k * 0.04, -0.14, dHead, false); m.rotation.set(-1.9, 0, sd * (0.6 + k * 0.2)); }
+const cityLights = canvasTex(1024, 512, (g, w, h) => {
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h); seed = 7;
+  for (let k = 0; k < 2600; k++) { const x = rnd() * w, y = h * (0.15 + rnd() * 0.7), lon = x / w * Math.PI * 2, lat = (y / h - 0.5) * Math.PI; if (landF(lon, lat) > 0.16) { g.fillStyle = pick(['#ffd28a', '#ffe9b8', '#ffb347']); g.fillRect(x, y, 2, 2); } }
 });
-function dragonPath(s, t, out) {
-  const a = t * 0.9 - s * Math.PI * 2.6, rr = 0.62 + 0.08 * Math.sin(s * 9 + t * 2);
-  return out.set(C.x + Math.cos(a) * rr, DH - 0.45 + s * 0.9 + 0.06 * Math.sin(a * 2 + t), C.y + Math.sin(a) * rr);
-}
-const _dp = new THREE.Vector3(), _dq = new THREE.Vector3();
-function animDragon(t) {
-  for (let i = 0; i < DN; i++) { const s = 0.04 + i / (DN - 1) * 0.96; dragonPath(s, t, dSeg[i].position); dSeg[i].lookAt(dragonPath(s - 0.02, t, _dq)); }
-  dragonPath(0, t, dHead.position); dHead.lookAt(dragonPath(-0.03, t, _dp));
-  dJaw.position.y = -0.08 - 0.025 * (0.5 + 0.5 * Math.sin(t * 3));
-  pearl.rotation.set(0.3, t * 2.2, 0.15 * Math.sin(t)); pearl.position.y = DH + 0.05 * Math.sin(t * 2);
-  flames.forEach((f, k) => { f.rotation.set(t * (1 + k * 0.4) + k, t * 0.7 * (k % 2 ? -1 : 1), 0); f.position.y = pearl.position.y; });
+const cloudTex = canvasTex(1024, 512, (g, w, h) => {
+  g.clearRect(0, 0, w, h); seed = 11;
+  for (let k = 0; k < 260; k++) { const x = rnd() * w, y = h * (0.12 + rnd() * 0.76), r = 10 + rnd() * 38; const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, r * 2.2, r * 0.7, 0, 0, Math.PI * 2); g.fill(); }
+});
+const planetG = new THREE.Group(); planetG.position.set(C.x, PH0, C.y); planetG.rotation.z = 0.35; building.add(planetG);
+const planetM = new THREE.MeshStandardMaterial({ map: planetTex, emissiveMap: cityLights, emissive: '#ffcf80', emissiveIntensity: 0.25, roughness: 0.7, metalness: 0.05 });
+const planet = mesh(sph(PR, 64, 48), planetM, 0, 0, 0, planetG, false);
+const clouds = mesh(sph(PR * 1.025, 64, 48), new THREE.MeshStandardMaterial({ map: cloudTex, transparent: true, depthWrite: false, roughness: 1 }), 0, 0, 0, planetG, false);
+const atmo = mesh(sph(PR * 1.16, 48, 32), new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
+  uniforms: { c: { value: new THREE.Color('#5ec8ff') } },
+  vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: 'uniform vec3 c; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.2); gl_FragColor = vec4(c, f * 0.9); }',
+}), 0, 0, 0, planetG, false);
+const ringTex = canvasTex(512, 8, (g, w, h) => {
+  g.clearRect(0, 0, w, h); seed = 21;
+  for (let x = 0; x < w; x++) { const a = (0.55 + 0.45 * rnd()) * (x > w * 0.42 && x < w * 0.47 ? 0.1 : 1); const tone = 180 + rnd() * 60; g.fillStyle = `rgba(${tone + 20},${tone},${tone - 50},${a})`; g.fillRect(x, 0, 1, h); }
+});
+const ringGeo = new THREE.RingGeometry(PR * 1.35, PR * 2.0, 96, 1);
+{ const uv = ringGeo.attributes.uv, p = ringGeo.attributes.position; for (let i = 0; i < uv.count; i++) { const r = Math.hypot(p.getX(i), p.getY(i)); uv.setXY(i, (r - PR * 1.35) / (PR * 0.65), 0.5); } }
+const pRing = mesh(ringGeo, new THREE.MeshStandardMaterial({ map: ringTex, transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 0.8, emissive: '#ffe2b0', emissiveIntensity: 0.15 }), 0, 0, 0, planetG, false);
+pRing.rotation.x = -Math.PI / 2 + 0.45;
+const moons = [[0.16, 2.5, 0.7, '#d9d4cc'], [0.1, 1.9, -1.1, '#ff9a6a']].map(([r, orb, sp, c]) => ({ m: mesh(sph(r, 24, 16), mat(c, { roughness: 0.9 }), 0, 0, 0, building, false), orb, sp }));
+glow(C.x, PH0, C.y, '#7fd4ff', 4.5, building);
+const sparks = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(Array.from({ length: 140 }, () => { const a = rnd() * 6.28, r = 1.3 + rnd() * 1.5; return [Math.cos(a) * r, (rnd() - 0.5) * 1.8, Math.sin(a) * r]; }).flat(), 3)), new THREE.PointsMaterial({ color: '#bfe9ff', size: 0.05, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
+sparks.position.set(C.x, PH0, C.y); building.add(sparks);
+function animPlanet(t) {
+  planet.rotation.y = t * 0.25; clouds.rotation.y = t * 0.32; pRing.rotation.z = t * 0.05;
+  planetG.position.y = PH0 + 0.08 * Math.sin(t * 0.8);
+  moons.forEach((o, k) => { const a = t * o.sp + k * 2; o.m.position.set(C.x + Math.cos(a) * o.orb, PH0 + Math.sin(a * 0.7) * 0.4, C.y + Math.sin(a) * o.orb); });
+  sparks.rotation.y = -t * 0.12;
 }
 
 // lounge: sofa, coffee table, foosball, coffee bar, lamp
@@ -965,7 +968,7 @@ function render(t) {
   hemi.intensity = 0.95 * WT.d + 0.6 * WT.k + 0.45 * WT.n;
   hemi.color.set('#ffffff').lerp(tmpB.set('#ffc2a8'), WT.k).lerp(tmpC.set('#5a6cc8'), WT.n);
   renderer.toneMappingExposure = 1.0 + 0.25 * N;
-  roomLights.forEach(l => { l.intensity = 30 * N; });
+  roomLights.forEach(l => { l.intensity = 30 * N; }); planetM.emissiveIntensity = 0.25 + 1.2 * N;
   [podGlass, towGlass, bandM, ...cityMats].forEach(m => { m.emissiveIntensity = 1.3 * N; }); tileGlass.emissiveIntensity = 0.5 * N; ledM.emissiveIntensity = 0.5 + 2.2 * N; orangeM.emissiveIntensity = 0.1 + 0.4 * N;
   signMats.forEach(m => { m.emissiveIntensity = 0.12 + 0.6 * N; });
   bulbM.emissiveIntensity = 0.2 + 2.5 * N;
@@ -977,7 +980,7 @@ function render(t) {
   if (!RM) {
     jets.forEach((j, k) => { j.scale.y = 0.8 + 0.25 * Math.sin(t * 3 + k); });
     jetTop.scale.y = 0.9 + 0.15 * Math.sin(t * 2.2);
-    animDragon(t);
+    animPlanet(t);
     fish.forEach((fi, k) => { const ph = t * (0.5 + k * 0.17) + k * 2; fi.position.x = 5.75 + Math.sin(ph) * 0.62; fi.rotation.y = Math.cos(ph) > 0 ? 0 : Math.PI; });
     screens.forEach((s, k) => { s.m.emissiveIntensity = 0.75 + 0.15 * Math.sin(t * 3 + k * 1.7); });
     traffic.forEach(c => { c.u += c.v * dt * (c.lane ? 1 : -1); const [x, y, r] = loopPos(c.lane ? c.u : -c.u, c.lane); c.g.position.set(x, 0, y); c.g.rotation.y = -r + (c.lane ? 0 : Math.PI); });
