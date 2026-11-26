@@ -1,13 +1,13 @@
 
 /* ---------- visual runners: animate what the AI employees are doing on the server ---------- */
 const EXAMPLES = {
-  sasa:['安排下周三和供应商开会的议程','整理本周各部门周报'],
-  nana:['写一份新品上市的 Meta 广告投放方案','给玫瑰精华液写 5 组广告文案'],
-  mimi:['写 3 条下周的 IG 帖子文案','策划一条开箱 Reels'],
-  kiki:['写一套新品咨询的 WhatsApp 回复话术','整理退换货的标准回复'],
-  lulu:['写双 12 促销海报的画面方案','做一版圣诞主题的视觉方向'],
-  bobo:['写一条新品开箱短视频的分镜脚本','把直播精华剪辑方案写出来'],
-  wawa:['做一份每日发货检查清单','写一份新品上市的库存与发货排期'],
+  sasa:['安排下周三和加盟客户的会议议程','整理本周各部门周报'],
+  nana:['写一份「免费连锁加盟咨询」的 Meta 广告投放方案','给商业课程写 5 组广告文案'],
+  mimi:['写 3 条下周的 FB 帖子：连锁加盟成功案例','策划一条「老板如何复制分店」的 Reels'],
+  kiki:['写一套免费咨询的 WhatsApp 回复话术','整理课程报名常见问题的标准回复'],
+  lulu:['写商业课程海报的画面方案','做一版连锁 · 绩效 · 资本 的品牌视觉方向'],
+  bobo:['写一条「3 分钟看懂连锁加盟」短视频脚本','把讲座精华剪辑方案写出来'],
+  wawa:['做一份课程报名跟进检查清单','写一份加盟咨询客户的跟进排期'],
 };
 const rsleep = ms => new Promise(r => setTimeout(r, ms));
 async function until(pred, ms=400){while(!pred()) await rsleep(ms)}
@@ -175,7 +175,7 @@ function applyEvents(list){
     const json = esc(JSON.stringify(Object.assign({agent:e.agent, event:e.event}, extra))).replace(`&quot;${e.agent}&quot;`, `<b>&quot;${e.agent}&quot;</b>`);
     return `<div class="ev" style="--c:${a.tag||a.color}"><span class="t">${hmOf(tsMs(e.ts))}</span><code>${json}</code></div>`;
   }).join('');
-  $('#evn').textContent = list.length+' 条';
+  $('#evn').textContent = list.length;
 }
 function applyAutos(map){
   Object.values(AUTO_BY).forEach(u => {const s = map[u.key] || {}; u.on = s.on ?? (ORG.autos.find(x=>x.key===u.key)||{}).on; u.runs = s.runs || 0; u.last = s.last});
@@ -200,13 +200,13 @@ $('#memBody').addEventListener('click', async e => {
 $('#memBtn').addEventListener('click', () => {renderMembers(); $('#memDlg').showModal()});
 $('#memClose').addEventListener('click', () => $('#memDlg').close());
 function setSession(s){
-  session = s;
+  session = s; renderBoard();
   $('#conn').innerHTML = `已上线 · <b>${esc(s.name)}</b>${s.isOwner?'（老板）':''}`;
   $('#aprule').disabled = !s.isOwner;
   $('#memBtn').hidden = !s.isOwner;
   renderTasks(); renderReview();
 }
-window.OFFICE = {applyTasks, applyEvents, applyAutos, applySettings, applyRequests, applyMembers, setSession, toast};
+window.OFFICE = {applyNotices, applyTasks, applyEvents, applyAutos, applySettings, applyRequests, applyMembers, setSession, toast};
 
 /* ---------- role sheet dialog ---------- */
 const dlg = $('#roleDlg');

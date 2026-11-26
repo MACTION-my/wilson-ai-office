@@ -56,12 +56,14 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function subscribe(isOwner) {
-  unsubs.push(onSnapshot(query(collection(db, "tasks"), orderBy("createdAt", "desc"), limit(80)),
+  unsubs.push(onSnapshot(query(collection(db, "tasks"), orderBy("createdAt", "desc"), limit(150)),
     (s) => O.applyTasks(s.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))), fail("读取任务")));
   unsubs.push(onSnapshot(query(collection(db, "events"), orderBy("ts", "desc"), limit(60)),
     (s) => O.applyEvents(s.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))), fail("读取事件")));
   unsubs.push(onSnapshot(collection(db, "automations"),
     (s) => O.applyAutos(Object.fromEntries(s.docs.map((d) => [d.id, d.data()]))), fail("读取自动化")));
+  unsubs.push(onSnapshot(query(collection(db, "notices"), orderBy("at", "desc"), limit(60)),
+    (s) => O.applyNotices && O.applyNotices(s.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))), fail("读取通知")));
   unsubs.push(onSnapshot(doc(db, "settings", "main"), (s) => O.applySettings(s.data() || {}), fail("读取设置")));
   if (isOwner) {
     unsubs.push(onSnapshot(collection(db, "requests"), (s) => O.applyRequests(s.docs.map((d) => ({ uid: d.id, ...d.data() }))), fail("读取申请")));
@@ -74,6 +76,7 @@ window.DB = {
   decide: (id, ok, note) => updateDoc(doc(db, "tasks", id), { decision: ok ? "approve" : "revise", decisionNote: note || "", decidedAt: serverTimestamp() }),
   setAuto: (key, on) => setDoc(doc(db, "automations", key), { on }, { merge: true }),
   runAuto: (key) => setDoc(doc(db, "automations", key), { runNow: true }, { merge: true }),
+  runNotices: (kind) => setDoc(doc(db, "settings", "notices"), { runNow: kind }, { merge: true }),
   setRule: (v) => setDoc(doc(db, "settings", "main"), { aprule: v }),
   approveMember: async (uid, r) => {
     await setDoc(doc(db, "members", uid), { email: r.email || "", name: r.name || "", role: "member" });

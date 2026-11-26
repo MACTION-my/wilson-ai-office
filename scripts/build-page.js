@@ -25,7 +25,7 @@ function cut(startMark, endMark, to) {
 rep('<span class="chip">演示模式 · <b>模拟事件与示例数据</b></span>',
   '<span class="chip" id="conn">连接中…</span><button type="button" class="chip cbtn" id="memBtn" hidden>团队成员</button><button type="button" class="chip cbtn" id="outBtn" hidden>退出</button>');
 cut('<div class="review" id="review" hidden>', '</div>\n        </div>',
-  '<div class="review" id="review" hidden>\n          <b>待你审批</b><span id="rvTitle"></span><span id="rvSum"></span>\n          <textarea id="rvNote" placeholder="修改意见（退回时填写，可以留空）"></textarea>\n          <div class="rvb"><button type="button" class="ap" id="approve">批准 ✓</button><button type="button" id="revise">退回修改</button><button type="button" id="rvDoc">看全文</button></div>\n        </div>');
+  '<div class="review rvbar" id="review" hidden><button type="button" id="rvGo">⏳ <b id="rvN">0</b> 个任务等你审批，点这里去处理 →</button></div>');
 cut('<section class="panel how">', '</section>', '');
 rep('<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>',
   `<dialog id="roleDlg" aria-labelledby="rdTitle"><div class="rd" id="rdBody"></div></dialog>

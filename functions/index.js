@@ -470,3 +470,62 @@ export const onTaskDone = onDocumentUpdated(
   });
 
 
+
+/* ---------- twice-daily notices: each employee posts "today's plan" at 09:00 and "done today" at 18:00 ---------- */
+const DUTY = ["sasa", "nana", "mimi", "kiki", "lulu", "bobo", "wawa"];
+function autoToday(u, st, now) {
+  const s = u.schedule, lp = localParts(now);
+  if (s.every) return true;
+  if (s.weekly) return lp.dow === s.weekly;
+  if (s.everyDays) {
+    const lastMs = st.last ? st.last.toMillis() : 0, end = new Date(`${lp.date}T23:59:59${TZ_OFFSET}`).getTime();
+    return !lastMs || end - lastMs >= s.everyDays * 864e5 - 3 * 3600e3;
+  }
+  return !!s.daily;
+}
+const isMine = (t, id) => t.who === id || (t.who === "all" && t.team && t.team[id]);
+const dayOf = (ms) => localParts(new Date(ms)).date;
+async function buildNotices(kind, now = new Date()) {
+  const today = localParts(now).date;
+  const [tSnap, aSnap] = await Promise.all([
+    db.collection("tasks").orderBy("createdAt", "desc").limit(300).get(),
+    db.collection("automations").get(),
+  ]);
+  const tasks = tSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const ast = Object.fromEntries(aSnap.docs.map((d) => [d.id, d.data()]));
+  const batch = db.batch();
+  for (const id of DUTY) {
+    const name = ORG.agents[id].name, mine = tasks.filter((t) => isMine(t, id));
+    const items = [];
+    if (kind === "plan") {
+      ORG.autos.filter((u) => u.who === id && (ast[u.key]?.on ?? u.on) && autoToday(u, ast[u.key] || {}, now))
+        .forEach((u) => items.push({ kind: "auto", text: u.n, when: u.cad }));
+      mine.filter((t) => ["queued", "running", "revising"].includes(t.status) && !t.auto)
+        .forEach((t) => items.push({ kind: "task", text: t.title, when: t.status === "revising" ? "按你的意见修改中" : "继续做" }));
+      mine.filter((t) => t.status === "review")
+        .forEach((t) => items.push({ kind: "review", text: t.title, when: "等你审批" }));
+    } else {
+      mine.filter((t) => t.status === "done" && t.finishedAt && dayOf(t.finishedAt.toMillis()) === today)
+        .forEach((t) => items.push({ kind: t.auto ? "auto" : "task", text: t.title, when: t.auto ? "自动完成" : t.needAp ? "已完成，你已批准" : "已完成", taskId: t.id, qa: t.qa ? (t.qa.ok ? "验收合格" : "需改进") : null }));
+      mine.filter((t) => t.status === "failed" && t.finishedAt && dayOf(t.finishedAt.toMillis()) === today)
+        .forEach((t) => items.push({ kind: "failed", text: t.title, when: "出错了", taskId: t.id }));
+      mine.filter((t) => t.status === "review").forEach((t) => items.push({ kind: "review", text: t.title, when: "等你审批", taskId: t.id }));
+      mine.filter((t) => ["queued", "running", "revising"].includes(t.status)).forEach((t) => items.push({ kind: "doing", text: t.title, when: "还在做，明天继续", taskId: t.id }));
+    }
+    const done = items.filter((x) => x.kind === "task" || x.kind === "auto").length;
+    const text = kind === "plan"
+      ? (items.length ? `早安老板！我是 ${name}，今天有 ${items.length} 件事要做。` : `早安老板！我是 ${name}，今天没有排定的工作，有任务随时派给我。`)
+      : (items.length ? `老板，${name} 今天的汇报：完成 ${done} 件${items.some((x) => x.kind === "review") ? `，${items.filter((x) => x.kind === "review").length} 件等你审批` : ""}${items.some((x) => x.kind === "failed") ? `，${items.filter((x) => x.kind === "failed").length} 件出错` : ""}。` : `老板，${name} 今天没有完成的工作。`);
+    batch.set(db.doc(`notices/${today}_${id}_${kind}`), { who: id, kind, day: today, at: FieldValue.serverTimestamp(), text, items: items.slice(0, 30) });
+  }
+  await batch.commit();
+}
+export const noticeMorning = onSchedule({ schedule: "0 9 * * *", timeZone: ORG.timezone }, () => buildNotices("plan"));
+export const noticeEvening = onSchedule({ schedule: "0 18 * * *", timeZone: ORG.timezone }, () => buildNotices("report"));
+// the boss can ask for a fresh notice now (writes settings/notices {runNow: "plan" | "report"})
+export const noticeRunNow = onDocumentWritten({ document: "settings/notices" }, async (event) => {
+  const after = event.data.after.exists ? event.data.after.data() : null;
+  if (!after || !["plan", "report"].includes(after.runNow)) return;
+  await buildNotices(after.runNow);
+  await event.data.after.ref.set({ runNow: null, lastRun: FieldValue.serverTimestamp() }, { merge: true });
+});
