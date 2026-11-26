@@ -888,6 +888,22 @@ function floorSign(parent, x, h, y, text, sub, c, rotY = 0, w = 5) {
   const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
   const p = mesh(new THREE.PlaneGeometry(w, w / 4), m, x, h, y, parent, false, false); p.rotation.y = rotY; return p;
 }
+// glass room walls: tinted panel + glowing top/bottom rails, with an optional door gap [from, to] along the wall
+
+function roomWall(parent, h, ax, ay, bx, by, H, c, gap, dark) {
+  const wallMats = roomWall.mats || (roomWall.mats = {}), key = c + (dark ? 'd' : '');
+  const wm = wallMats[key] || (wallMats[key] = { g: new THREE.MeshStandardMaterial({ color: new THREE.Color(dark ? '#1a1530' : '#ffffff').lerp(new THREE.Color(c), dark ? 0.25 : 0.18), transparent: true, opacity: dark ? 0.78 : 0.38, roughness: 0.2, metalness: 0.15, depthWrite: false, side: THREE.DoubleSide }),
+    r: new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.8, metalness: 0.3, roughness: 0.3 }) });
+  const vert = ax === bx, a0 = vert ? Math.min(ay, by) : Math.min(ax, bx), a1 = vert ? Math.max(ay, by) : Math.max(ax, bx), fixed = vert ? ax : ay;
+  const segs = gap ? [[a0, gap[0]], [gap[1], a1]] : [[a0, a1]];
+  segs.forEach(([u0, u1]) => {
+    if (u1 - u0 < 0.05) return;
+    const r = (x0, y0, x1, y1, h0, h1, m) => vert ? box(parent, fixed - x0, u0 - y0, fixed + x0, u1 + y0, h0, h1, m, false) : box(parent, u0 - y0, fixed - x0, u1 + y0, fixed + x0, h0, h1, m, false);
+    r(0.03, 0, 0, 0, h, h + H, wm.g).renderOrder = 2;
+    r(0.05, 0.02, 0, 0, h + H, h + H + 0.06, wm.r); r(0.05, 0.02, 0, 0, h, h + 0.08, wm.r);
+    [u0, u1].forEach(u => vert ? box(parent, fixed - 0.06, u - 0.06, fixed + 0.06, u + 0.06, h, h + H + 0.06, wm.r, false) : box(parent, u - 0.06, fixed - 0.06, u + 0.06, fixed + 0.06, h, h + H + 0.06, wm.r, false));
+  });
+}
 function slab(parent, k, matTop) {
   box(parent, BX0, BY0, BX1, BY1, FY[k] - 0.5, FY[k] - 0.02, mat('#2b2f45', { roughness: 0.6 }));
   const f = mesh(new THREE.PlaneGeometry(GX, GY), matTop, GX / 2, FY[k] - 0.01, GY / 2, parent, false, true); f.rotation.x = -Math.PI / 2;
@@ -984,6 +1000,11 @@ function lift(parent, h, label, x = LIFT_X, y = LIFT_Y, rotY = LIFT_R) {
   floorSign(P, 22, h + 3.0, 0.4, 'NAP & MASSAGE', '休息舱 · 按摩椅', '#3fdc8a', 0, 4.5);
   [19.6, 22.0, 24.4].forEach(x => { const pod = mesh(new THREE.CapsuleGeometry(0.7, 1.3, 8, 18), mat('#f2f0f6', { roughness: 0.3 }), x, h + 0.75, 3.0, P); pod.rotation.x = Math.PI / 2;
     const w = mesh(sph(0.62, 18, 12), new THREE.MeshStandardMaterial({ color: '#1b2440', emissive: '#3fdc8a', emissiveIntensity: 0.6, transparent: true, opacity: 0.8 }), x, h + 0.95, 2.2, P, false); w.scale.set(0.9, 0.6, 0.6); });
+  // rooms: cinema (dark glass), game zone, pantry, nap pods; doors face the lounge in the middle
+  roomWall(P, h, 9.0, 15.0, 9.0, 21.6, 2.8, '#ff6fc8', [16.6, 18.4], true); roomWall(P, h, 0.3, 15.0, 9.0, 15.0, 2.8, '#ff6fc8', null, true);
+  roomWall(P, h, 14.5, 15.0, 14.5, 21.6, 1.3, '#3ee6ff', [16.4, 18.2]); roomWall(P, h, 14.5, 15.0, 25.8, 15.0, 1.3, '#3ee6ff', [19.0, 21.0]);
+  roomWall(P, h, 0.3, 7.9, 6.0, 7.9, 1.2, '#ffd166', [2.0, 3.6]);
+  roomWall(P, h, 18.2, 0.3, 18.2, 4.6, 2.2, '#3fdc8a'); roomWall(P, h, 18.2, 4.6, 25.8, 4.6, 2.2, '#3fdc8a', [21.2, 22.8]);
   [[1.0, 13.0], [25.0, 8.0], [12.5, 14.6], [9.4, 1.0], [25.0, 13.0]].forEach(([x, y]) => plant(x, y, 1.2, P, h));
 }
 
@@ -1011,6 +1032,12 @@ function lift(parent, h, label, x = LIFT_X, y = LIFT_Y, rotY = LIFT_R) {
   neonStrip(P, 25.0, 11.0, 25.0, 19.0, h + 3.0, '#ffd166');
   // red carpet in front of the lift doors
   const rp = mesh(new THREE.PlaneGeometry(1.8, 2.4), mat('#7a1f2e', { roughness: 0.9 }), LIFT_X + 1.3, h + 0.015, LIFT_Y, P, false, true); rp.rotation.x = -Math.PI / 2;
+  // rooms: Wilson's office (door by the lift), meeting room, guest lounge
+  roomWall(P, h, 7.4, 6.4, 18.6, 6.4, 2.7, '#ffd166', [8.3, 11.3]); roomWall(P, h, 7.4, 6.4, 7.4, 16.8, 2.7, '#ffd166');
+  roomWall(P, h, 18.6, 6.4, 18.6, 16.8, 2.7, '#ffd166'); roomWall(P, h, 7.4, 16.8, 18.6, 16.8, 2.7, '#ffd166');
+  roomWall(P, h, 1.0, 6.8, 6.2, 6.8, 2.7, '#3ee6ff'); roomWall(P, h, 1.0, 14.6, 6.2, 14.6, 2.7, '#3ee6ff');
+  roomWall(P, h, 6.2, 6.8, 6.2, 14.6, 2.7, '#3ee6ff', [9.8, 11.6]); roomWall(P, h, 1.0, 6.8, 1.0, 14.6, 2.7, '#3ee6ff');
+  roomWall(P, h, 20.3, 3.0, 20.3, 10.8, 1.1, '#c9a06a', [6.0, 7.8]); roomWall(P, h, 20.3, 10.8, 24.9, 10.8, 1.1, '#c9a06a');
   [[1.0, 1.2], [25.0, 1.2], [1.0, 20.8], [25.0, 20.8], [17.0, 20.8], [9.0, 20.8]].forEach(([x, y]) => plant(x, y, 1.3, P, h));
 }
 
@@ -1454,7 +1481,7 @@ function render(t) {
 
 const O3 = window.O3 = { people,
   look(x, y, dist, polar) { flyTo(new THREE.Vector3(x, 1, y), dist, polar); },
-  inside: 0, render, camera, controls, get flying() { return fly; }, get floor() { return mode; },
+  inside: 0, render, camera, controls, get flying() { return fly; }, get floor() { return mode; }, get people() { return people; },
   visXY(x, y, k = floorOf(x, y)) { return mode !== 'out' && k === mode; },
   turn(dir) { const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)); flyTo(controls.target, sph.radius, sph.phi, sph.theta + dir * Math.PI / 2); },
   setOrbit(on) { controls.autoRotate = !!on; },

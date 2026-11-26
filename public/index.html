@@ -2278,36 +2278,44 @@ function releaseAg(ids){ids.forEach(i=>agentBusy.delete(i)); for(let i=0;i<waite
 let bossQ = Promise.resolve(), bossN = 0;
 function withBoss(fn){bossN++; const p = bossQ.then(fn).finally(()=>{bossN--}); bossQ = p.catch(()=>{}); return p}
 function vfx(id,ev){const a = AG[id]; a.act[a.act.length-1]++; renderSpark(id); react(id,ev)}
+// hand the work to Wilson, then both carry on with their day; the decision (which can take hours) is handled by afterReview
 async function visReview(t,id){
   const a = AG[id];
-  while(true){
-    if(bossN>0) setState(id,'waiting','排队等 Wilson 有空审阅','等老板…');
-    const r = await withBoss(async () => {
-      hold('wilson'); await go('wilson',AG.wilson.home);
-      setState(id,'handoff','把成果送给 Wilson','送审'); a.carry = true; vfx(id,'handoff');
-      await go(id,BOSS_VISIT);
-      a.carry = false; AG.wilson.reading = true;
-      setState('wilson','reviewing',`审阅 ${a.name} 的成果`,'review()'); setState(id,'waiting','等待 Wilson 审批','');
-      await until(() => t.status!=='review');
-      AG.wilson.reading = false;
-      const res = t.status;
-      if(res==='done'){
-        vfx('wilson','approved');
-        setState('wilson','done','已批准，辛苦了','干得漂亮！'); setState(id,'done','获得批准','Yay!');
-        a.jump = 0.6; setTimeout(()=>{AG.wilson.jump = 0.6},150);
-        await rsleep(2200);
-      } else if(res==='revising'){
-        setState('wilson','office','要求修改','这里再改改'); a.say = {text:'好的，马上改！', until:performance.now()+1600};
-        await rsleep(1200);
-      }
-      AG.wilson.bubble = null; setState('wilson','office','在办公室处理邮件',null); release('wilson');
-      return res;
-    });
-    if(r!=='revising') return r;
-    await go(id,a.home); setState(id,'working','根据 Wilson 的意见修改','revise()'); vfx(id,'tool_call');
-    await until(() => t.status!=='revising');
-    if(t.status!=='review') return t.status;
-  }
+  await withBoss(async () => {
+    hold('wilson'); await go('wilson',AG.wilson.home);
+    setState(id,'handoff','把成果送给 Wilson','送审'); a.carry = true; vfx(id,'handoff');
+    await go(id,BOSS_VISIT);
+    a.carry = false; AG.wilson.reading = true;
+    setState('wilson','reviewing',`看 ${a.name} 送来的成果`,'review()'); setState(id,'waiting','成果已交给 Wilson','老板，请过目');
+    await rsleep(2600);
+    AG.wilson.reading = false;
+    if(t.status==='review'){AG.wilson.say = {text:'好，我晚点批', until:performance.now()+1600}; a.say = {text:'放在待审批啦', until:performance.now()+1600}}
+    await rsleep(1200);
+    AG.wilson.bubble = null; setState('wilson','office','在办公室处理邮件',null); release('wilson');
+  });
+  await go(id,a.home);
+}
+const reviewWatch = new Set();
+async function afterReview(t,id){
+  if(reviewWatch.has(t.id)) return; reviewWatch.add(t.id);
+  try{
+    await until(() => t.status!=='review', 1000);
+    const a = AG[id];
+    if(t.status==='done'){
+      vfx('wilson','approved'); a.say = {text:'获得批准，Yay！', until:performance.now()+2000, happy:true};
+      if(!held.has('wilson')) AG.wilson.say = {text:`批准了，辛苦 ${a.name}！`, until:performance.now()+2000, happy:true};
+      a.jump = 0.6; setTimeout(()=>{AG.wilson.jump = 0.6},150);
+    } else if(t.status==='revising'){
+      await acquire([id]); hold(id);
+      try{
+        if(a.loc!==a.home) await go(id,a.home);
+        a.say = {text:'好的，马上改！', until:performance.now()+1600};
+        setState(id,'working','根据 Wilson 的意见修改','revise()'); vfx(id,'tool_call');
+        await until(() => t.status!=='revising');
+        if(t.status==='review'){await visReview(t,id); reviewWatch.delete(t.id); afterReview(t,id)}
+      } finally {setRoutine(id); release(id); releaseAg([id])}
+    }
+  } finally {if(t.status!=='review') reviewWatch.delete(t.id)}
 }
 async function visEmp(t){
   const id = t.who, a = AG[id], sub = t.auto ? '自动化 · '+t.title : '老板交代';
@@ -2336,7 +2344,7 @@ async function visEmp(t){
     a.phone = false;
     if(a.loc!==a.home) await go(id,a.home);
     if(t.status==='failed'){setState(id,'waiting','出错了：'+(t.error||''),'出错了…'); await rsleep(3000)}
-    else if(t.status==='review') await visReview(t,id);
+    else if(t.status==='review'){await visReview(t,id); afterReview(t,id)}
     else {
       vfx(id,'done'); setState(id,'done', t.auto ? `自动化完成：${t.title}` : '任务完成，已汇报 Wilson','完成 ✓');
       if(!t.auto && !held.has('wilson')) setTimeout(()=>{AG.wilson.say = {text:`收到，辛苦了 ${a.name}！`, until:performance.now()+1800, happy:true}}, 600);
@@ -2389,7 +2397,8 @@ async function visTeam(t){
     }
     if(t.status==='review' || t.status==='revising'){
       TEAM.filter(x=>x!=='sasa').forEach(id=>setState(id,'waiting','等待老板批准','等待…'));
-      await visReview(t,'sasa'); hold('wilson');
+      if(t.status==='review') await visReview(t,'sasa');
+      afterReview(t,'sasa');
     }
     if(t.status==='done'){
       if(!t.needAp) celebrate('MISSION COMPLETE','任务完成 · 已汇报 Wilson');
@@ -2421,7 +2430,8 @@ function applyTasks(list){
     else {t = Object.assign({}, d); byId.set(d.id,t); tasks.push(t)}
     if(!started.has(t.id)){
       started.add(t.id);
-      if(!(firstLoad && DONE(t)) && !DONE(t) && (t.who==='all' || AG[t.who])) (t.who==='all' ? visTeam : visEmp)(t).catch(e=>console.error(e));
+      if(firstLoad && t.status==='review' && (t.who==='all' || AG[t.who])) afterReview(t, t.who==='all' ? 'sasa' : t.who);   // already handed in before this visit
+      else if(!(firstLoad && DONE(t)) && !DONE(t) && (t.who==='all' || AG[t.who])) (t.who==='all' ? visTeam : visEmp)(t).catch(e=>console.error(e));
     }
   });
   for(let i=tasks.length-1;i>=0;i--) if(!seen.has(tasks[i].id)){byId.delete(tasks[i].id); tasks.splice(i,1)}
