@@ -819,8 +819,7 @@ const SB = 1.6, OXB = (GX - 7 * SB) / 2, OYB = (GY - 6.5 * SB) / 2 + 0.6;
 const SL = 1.7, OXL = (GX - 7.6 * SL) / 2, OYL = 7.6;
 const inBoss = (x, y) => x < 7 && y < 6.5, inLounge = (x, y) => x > 9.2 && x < 16.8 && y > 17.2 && y < 21.4;
 function floorOf(x, y) { return inBoss(x, y) ? 3 : inLounge(x, y) ? 2 : 1; }
-function floorPos(x, y, out) {
-  const k = floorOf(x, y);
+function floorPos(x, y, out, k = floorOf(x, y)) {
   if (k === 3) { out.x = OXB + x * SB; out.y = OYB + y * SB; }
   else if (k === 2) { out.x = OXL + (x - 9.2) * SL; out.y = OYL + (y - 17.2) * SL; }
   else { out.x = x; out.y = y; }
@@ -852,7 +851,7 @@ function slab(parent, k, matTop) {
   });
 }
 // elevators: a glass lift with glowing doors on every floor where people arrive
-const LIFT_X = 7.4, LIFT_Y = 4.9, LIFT_R = -Math.PI / 2;   // one shaft, same spot on every floor
+const LIFT_X = 7.4, LIFT_Y = 4.9, LIFT_R = Math.PI / 2;   // doors face the office (+x)   // one shaft, same spot on every floor
 function lift(parent, h, label, x = LIFT_X, y = LIFT_Y, rotY = LIFT_R) {
   const g = new THREE.Group(); g.position.set(x, h, y); g.rotation.y = rotY; parent.add(g);
   rbox(g, 2.2, 3.0, 0.5, 0.08, mat('#20233a', { metalness: 0.6, roughness: 0.3 }), 0, 1.5, -0.25);
@@ -931,7 +930,7 @@ function lift(parent, h, label, x = LIFT_X, y = LIFT_Y, rotY = LIFT_R) {
   rbox(P, 0.9, 2.1, 0.8, 0.06, mat('#d9dbe8', { metalness: 0.7, roughness: 0.25 }), 7.9, h + 1.05, 0.9);
   box(P, 0.2, 2.2, 0.35, 6.2, h + 0.8, h + 2.6, mat('#3a2c24'));
   seed = 61; for (let r = 0; r < 3; r++) for (let k = 0; k < 9; k++) box(P, 0.36, 2.4 + k * 0.42, 0.5, 2.7 + k * 0.42, h + 0.95 + r * 0.55, h + 1.25 + r * 0.55, mat(pick(['#ff6fc8', '#ffd166', '#3ee6ff', '#ff9466', '#3fdc8a', '#ffffff'])));
-  [[3.0, 4.4], [6.0, 4.4], [3.0, 6.0]].forEach(([x, y]) => { mesh(cyl(0.55, 0.55, 0.05, 24), mat('#ffffff', { roughness: 0.3 }), x, h + 0.75, y, P); mesh(cyl(0.06, 0.2, 0.72, 10), deskLeg, x, h + 0.36, y, P);
+  [[3.0, 4.4], [5.6, 6.7], [3.0, 6.4]].forEach(([x, y]) => { mesh(cyl(0.55, 0.55, 0.05, 24), mat('#ffffff', { roughness: 0.3 }), x, h + 0.75, y, P); mesh(cyl(0.06, 0.2, 0.72, 10), deskLeg, x, h + 0.36, y, P);
     [0, 1, 2, 3].forEach(q => { const a = q * Math.PI / 2 + 0.4; mesh(cyl(0.2, 0.2, 0.06, 14), mat(pick(['#ffd166', '#ff6fc8', '#3ee6ff'])), x + Math.cos(a) * 0.85, h + 0.5, y + Math.sin(a) * 0.85, P); }); });
   // nap pods (back-right)
   floorSign(P, 22, h + 3.0, 0.4, 'NAP & MASSAGE', '休息舱 · 按摩椅', '#3fdc8a', 0, 4.5);
@@ -963,7 +962,7 @@ function lift(parent, h, label, x = LIFT_X, y = LIFT_Y, rotY = LIFT_R) {
     for (let k = 0; k < 7; k++) mesh(r === 1 ? new THREE.ConeGeometry(0.13, 0.42, 12) : cyl(0.07, 0.08, 0.36, 10), r === 1 ? mat('#d8b25a', { metalness: 0.9, roughness: 0.2 }) : mat(pick(['#8a3a12', '#c27a2a', '#2a4a2a']), { roughness: 0.15 }), 25.2, h + 1.15 + r * 0.8, 11.8 + k * 1.0, P); }
   neonStrip(P, 25.0, 11.0, 25.0, 19.0, h + 3.0, '#ffd166');
   // red carpet in front of the lift doors
-  const rp = mesh(new THREE.PlaneGeometry(1.8, 2.4), mat('#7a1f2e', { roughness: 0.9 }), LIFT_X - 1.3, h + 0.015, LIFT_Y, P, false, true); rp.rotation.x = -Math.PI / 2;
+  const rp = mesh(new THREE.PlaneGeometry(1.8, 2.4), mat('#7a1f2e', { roughness: 0.9 }), LIFT_X + 1.3, h + 0.015, LIFT_Y, P, false, true); rp.rotation.x = -Math.PI / 2;
   [[1.0, 1.2], [25.0, 1.2], [1.0, 20.8], [25.0, 20.8], [17.0, 20.8], [9.0, 20.8]].forEach(([x, y]) => plant(x, y, 1.3, P, h));
 }
 
@@ -1358,8 +1357,8 @@ function render(t) {
     else if (seated) face = id === 'wilson' ? 0 : Math.PI;
     else if (a.facePl) face = Math.atan2(a.facePl[0], a.facePl[1]);
     if (face != null) p.yaw = yawTo(p.yaw, face, Math.min(1, dt * 10));
-    floorPos(a.pos.x, a.pos.y, fp); p.root.position.set(fp.x, fp.h + (a.z || 0) * HZ, fp.y);
-    p.root.visible = mode === 'out' ? fp.f === 1 : fp.f === mode;
+    floorPos(a.pos.x, a.pos.y, fp, a.fl || undefined); p.root.position.set(fp.x, fp.h + (a.z || 0) * HZ, fp.y);
+    p.root.visible = !(a.hold > 0) && (mode === 'out' ? fp.f === 1 : fp.f === mode);
     p.root.rotation.y = p.yaw;
     const ph = t * 9 + (a.phase || 0);
     p.walk = lerp(p.walk, walking ? 1 : 0, Math.min(1, dt * 8));
@@ -1407,7 +1406,7 @@ function render(t) {
 const O3 = window.O3 = { people,
   look(x, y, dist, polar) { flyTo(new THREE.Vector3(x, 1, y), dist, polar); },
   inside: 0, render, camera, controls, get flying() { return fly; }, get floor() { return mode; },
-  visXY(x, y) { return mode !== 'out' && floorOf(x, y) === mode; },
+  visXY(x, y, k = floorOf(x, y)) { return mode !== 'out' && k === mode; },
   turn(dir) { const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)); flyTo(controls.target, sph.radius, sph.phi, sph.theta + dir * Math.PI / 2); },
   setOrbit(on) { controls.autoRotate = !!on; },
   zoom(dir) { const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)); flyTo(controls.target, Math.max(controls.minDistance, Math.min(controls.maxDistance, sph.radius * (dir > 0 ? 0.62 : 1.6))), sph.phi, sph.theta); },
@@ -1415,8 +1414,8 @@ const O3 = window.O3 = { people,
   outside() { setMode('out'); flyTo(new THREE.Vector3(GX / 2, 10, GY / 2 + 4), 100, 1.05); },
 };
 setMode('out');
-S.use3D((x, y, z = 0) => {
-  floorPos(x, y, fp); v3.set(fp.x, fp.h + z * HZ, fp.y).project(camera);
+S.use3D((x, y, z = 0, fl) => {
+  floorPos(x, y, fp, fl || undefined); v3.set(fp.x, fp.h + z * HZ, fp.y).project(camera);
   if (v3.z > 1) return [-9999, -9999];
   return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H];
 });
