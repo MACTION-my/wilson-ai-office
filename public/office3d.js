@@ -836,6 +836,16 @@ function lift(parent, x, y, h, rotY, label) {
   const lm = neon('#3ee6ff', 2.2); neonMats.push(lm);
   box(g, -1.05, -0.03, 1.05, 0.03, 2.55, 2.62, lm, false); box(g, -1.05, -0.03, -1.0, 0.03, 0, 2.6, lm, false); box(g, 1.0, -0.03, 1.05, 0.03, 0, 2.6, lm, false);
   floorSign(g, 0, 2.85, 0.04, label, '电梯 LIFT', '#3ee6ff', 0, 1.8);
+  // back and sides: brushed panels, a glass window into the lit cabin, glowing rear edges
+  const panel = mat('#5a6688', { metalness: 0.75, roughness: 0.32 });
+  rbox(g, 2.24, 3.04, 0.06, 0.03, panel, 0, 1.5, -0.53);
+  [-1.13, 1.13].forEach(dx => rbox(g, 0.05, 3.0, 0.5, 0.02, panel, dx, 1.5, -0.25));
+  const cab = new THREE.MeshStandardMaterial({ color: '#bfe9ff', emissive: '#7fd8ff', emissiveIntensity: 0.9, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.85 });
+  neonMats.push(cab);
+  rbox(g, 1.3, 1.9, 0.03, 0.02, cab, 0, 1.45, -0.57);
+  box(g, -0.7, -0.6, 0.7, -0.56, 0.45, 0.5, lm, false); box(g, -0.7, -0.6, 0.7, -0.56, 2.4, 2.45, lm, false);
+  [-1.12, 1.12].forEach(dx => box(g, dx - 0.025, -0.58, dx + 0.025, -0.52, 0, 3.0, lm, false));
+  floorSign(g, 0, 2.75, -0.6, label, '电梯 LIFT', '#3ee6ff', Math.PI, 1.6);
   return g;
 }
 
@@ -1297,6 +1307,8 @@ function render(t) {
   hemi.intensity = 0.95 * WT.d + 0.6 * WT.k + 0.45 * WT.n;
   hemi.color.set('#ffffff').lerp(tmpB.set('#ffc2a8'), WT.k).lerp(tmpC.set('#5a6cc8'), WT.n);
   renderer.toneMappingExposure = 1.0 + 0.25 * N;
+  // glow: soft by day so walls don't wash out, strong neon at night
+  bloom.strength = 0.22 + 0.5 * N; bloom.threshold = 0.95 - 0.12 * N; bloom.radius = 0.4 + 0.1 * N;
   roomLights.forEach(l => { l.intensity = 30 * N; }); planetM.emissiveIntensity = 0.25 + 1.2 * N;
   [podGlass, towGlass, bandM, ...cityMats].forEach(m => { m.emissiveIntensity = 1.3 * N; }); tileGlass.emissiveIntensity = 0.5 * N; ledM.emissiveIntensity = 0.5 + 2.2 * N; orangeM.emissiveIntensity = 0.1 + 0.4 * N;
   signMats.forEach(m => { m.emissiveIntensity = 0.12 + 0.6 * N; });
