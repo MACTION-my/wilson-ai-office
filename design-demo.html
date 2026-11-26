@@ -357,6 +357,8 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
 .rvbar button{width:100%;text-align:left;background:rgba(255,209,102,.14);border:1px solid rgba(255,209,102,.6);color:#ffe9b3;border-radius:10px;padding:10px 12px;font:600 14px var(--f-body);cursor:pointer}
 .depts{grid-column:1!important;grid-row:3!important}
 .seg.rot button{font-size:15px;min-width:34px}
+.seg.floors button{font-weight:700;letter-spacing:.02em}
+.seg.floors button[aria-pressed="true"]{background:linear-gradient(135deg,#3ee6ff,#7a5cff);color:#061022;box-shadow:0 0 14px rgba(62,230,255,.55)}
 @media (max-width:1100px){.side{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){.side{grid-template-columns:minmax(0,1fr)}.stage{height:72vh;height:72dvh}.stagebar{flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 16px)}}
 @media (pointer:coarse){.who button,.presets button,.tf button,.dbtn,.seg button,.cbtn{min-height:40px}}
@@ -381,6 +383,7 @@ select#aprule{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba
       <canvas id="cv" aria-label="等距视角的 AI 办公室：Wilson 的角落办公室，以及 PA、Meta 广告、社媒内容、WhatsApp 客服、视频、设计、运营七个部门"></canvas>
       <div class="mtag"><span id="mtag">当前任务：<b>日常运营中</b></span></div>
       <div class="stagebar">
+        <div class="seg floors" id="floors" role="group" aria-label="楼层"><button type="button" data-fl="out" aria-pressed="true">🏙 外观</button><button type="button" data-fl="1" aria-pressed="false">1F 办公室</button><button type="button" data-fl="2" aria-pressed="false">2F 休闲</button><button type="button" data-fl="3" aria-pressed="false">3F 老板</button></div>
         <div class="seg rot" role="group" aria-label="旋转视角"><button type="button" id="rotL" aria-label="向左转 90 度">⟲</button><button type="button" id="orbitBtn" aria-pressed="false">环绕</button><button type="button" id="rotR" aria-label="向右转 90 度">⟳</button></div>
         <div class="seg rot" role="group" aria-label="远近"><button type="button" id="zOut" aria-label="拉远">－</button><button type="button" id="zIn" aria-label="拉近">＋</button></div>
         <div class="seg" role="group" aria-label="时间">
@@ -1167,6 +1170,8 @@ window.addEventListener('pointermove', e => {
 window.addEventListener('pointerup', () => {dragFrom = null; if(dragging){dragging = false; cv.style.cursor = 'grab'}});
 function turn(step){orbit = false; syncOrbit(); VIEWT = Math.round((VIEWT + step*Math.PI/2)/(Math.PI/2))*(Math.PI/2)}
 function syncOrbit(){window.O3?.setOrbit?.(orbit); const b = document.getElementById('orbitBtn'); if(b) b.setAttribute('aria-pressed', orbit ? 'true' : 'false')}
+document.querySelectorAll('#floors button').forEach(b => b.addEventListener('click', () => { if(!window.O3) return; const v = b.dataset.fl; v === 'out' ? O3.outside() : O3.enter(+v); }));
+document.addEventListener('o3floor', e => document.querySelectorAll('#floors button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fl === String(e.detail)))));
 document.getElementById('rotL')?.addEventListener('click', () => window.O3 ? O3.turn(-1) : turn(-1));
 document.getElementById('rotR')?.addEventListener('click', () => window.O3 ? O3.turn(1) : turn(1));
 document.getElementById('zIn')?.addEventListener('click', () => window.O3 && O3.zoom(1));
@@ -1897,8 +1902,8 @@ function draw3D(t,now){
   });
   if(ins > 0.02){
     ctx.save(); ctx.globalAlpha = ins;
-    drawBeams(); drawZoneLabels();
-    ALL.slice().sort((p,q)=>P(AG[p].pos.x,AG[p].pos.y)[1]-P(AG[q].pos.x,AG[q].pos.y)[1]).forEach(id => drawOverlay(id,t,now));
+    if(!window.O3 || O3.floor === 1){drawBeams(); drawZoneLabels()}
+    ALL.filter(id => !window.O3 || !O3.visXY || O3.visXY(AG[id].pos.x, AG[id].pos.y)).slice().sort((p,q)=>P(AG[p].pos.x,AG[p].pos.y)[1]-P(AG[q].pos.x,AG[q].pos.y)[1]).forEach(id => drawOverlay(id,t,now));
     ctx.restore();
   }
   drawEmotes(now); drawStamp(now);

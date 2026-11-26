@@ -3,6 +3,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const S = window.SIM;
 const stage = document.querySelector('.stage'), cv = document.getElementById('cv');
@@ -39,6 +43,9 @@ controls.screenSpacePanning = false;
 controls.target.set(GX / 2, 10, GY / 2 + 4);
 camera.position.copy(controls.target).add(new THREE.Vector3().setFromSphericalCoords(100, 1.05, Math.PI / 4));
 controls.update();
+// glow: bright lights, screens and neon bloom softly
+const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.5, 0.45, 0.9); composer.addPass(bloom); composer.addPass(new OutputPass());
 
 // fly-to animation used by buttons and by clicking the building
 let fly = null;
@@ -516,17 +523,17 @@ function loopPos(u, lane) {
 /* ---------- the building ---------- */
 const BX0 = -0.3, BY0 = -0.3, BX1 = GX + 0.3, BY1 = GY + 0.3;
 const building = new THREE.Group(); scene.add(building);
+const bossG = new THREE.Group(); scene.add(bossG);   // Wilson's room, shown on 3F
 box(building, BX0 - 0.4, BY0 - 0.4, BX1 + 0.4, BY1 + 0.4, 0.26, F0, mat('#d8d4de', { roughness: 0.6 }), false).receiveShadow = true;
 // steps up to the doors
 box(building, CXc - 2.6, BY1 + 0.4, CXc + 2.6, BY1 + 1.4, 0.26, 0.32, mat('#cfcad6'), false);
 // interior floor
 const floorM = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.35, metalness: 0.05 });
 const fl = mesh(new THREE.PlaneGeometry(GX, GY), floorM, GX / 2, F0 + 0.005, GY / 2, building, false, true); fl.rotation.x = -Math.PI / 2;
-const wood = mesh(new THREE.PlaneGeometry(7, 6.5), new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.45 }), 3.5, F0 + 0.01, 3.25, building, false, true); wood.rotation.x = -Math.PI / 2;
+const wood = mesh(new THREE.PlaneGeometry(7, 6.5), new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.45 }), 3.5, F0 + 0.01, 3.25, bossG, false, true); wood.rotation.x = -Math.PI / 2;
 function rug(x0, y0, x1, y1, color, o = 0.012, rough = 0.95) { const r = mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), mat(color, { roughness: rough }), (x0 + x1) / 2, F0 + o, (y0 + y1) / 2, building, false, true); r.rotation.x = -Math.PI / 2; return r; }
-rug(1.3, 3.1, 5.5, 6.1, '#a8425f');
+{ const r = mesh(new THREE.PlaneGeometry(4.2, 3.0), mat('#a8425f', { roughness: 0.95 }), 3.4, F0 + 0.012, 4.6, bossG, false, true); r.rotation.x = -Math.PI / 2; }
 TEAM.forEach(id => { const [x0, y0, x1, y1] = AG[id].zone; const c = new THREE.Color(AG[id].color).lerp(new THREE.Color('#ffffff'), 0.55); rug(x0, y0, x1, y1, '#' + c.getHexString()); rug(x0, y0, x1, y0 + 0.12, AG[id].color, 0.016, 0.4); });
-rug(9.2, 17.2, 16.8, 21.4, '#c8bde8');
 const hqRing = mesh(new THREE.RingGeometry(2.6, 3.0, 64), new THREE.MeshStandardMaterial({ color: '#3ee6ff', emissive: '#3ee6ff', emissiveIntensity: 0.8, transparent: true, opacity: 0.8 }), C.x, F0 + 0.02, C.y, building, false, false);
 hqRing.rotation.x = -Math.PI / 2;
 
@@ -562,8 +569,8 @@ function chair(x, y, color, rotY) {
   rbox(g, 0.6, 0.7, 0.1, 0.05, mat(color, { roughness: 0.6 }), 0, 0.92, 0.3);
   return g;
 }
-function plant(x, y, s = 1) {
-  const g = new THREE.Group(); g.position.set(x, F0, y); g.scale.setScalar(s); building.add(g);
+function plant(x, y, s = 1, parent = building, h = F0) {
+  const g = new THREE.Group(); g.position.set(x, h, y); g.scale.setScalar(s); parent.add(g);
   mesh(cyl(0.28, 0.22, 0.55, 14), mat('#f1ece4', { roughness: 0.5 }), 0, 0.28, 0, g);
   const lm = mat('#3b9a52', { flatShading: true });
   [[0, 1.0, 0, 0.42], [0.2, 0.78, 0.12, 0.32], [-0.18, 0.82, -0.1, 0.3], [0.05, 1.32, 0, 0.3]].forEach(([dx, dy, dz, r]) => mesh(new THREE.IcosahedronGeometry(r, 0), lm, dx, dy, dz, g));
@@ -582,22 +589,19 @@ TEAM.forEach(id => {
   chair(a.seat.x, a.seat.y + 0.05, c, 0);
 });
 // Wilson's office: desk, leather chair, TV, bookshelf, aquarium, glass walls
-box(building, 1.8, 3.6, 4.8, 4.5, F0, F0 + 0.8, mat('#7a5540', { roughness: 0.45 }));
-box(building, 1.75, 3.55, 4.85, 4.55, F0 + 0.8, F0 + 0.86, mat('#a37656', { roughness: 0.35 }));
-screen(building, 3.3, F0 + 1.25, 3.85, 0.9, 0.5, Math.PI, '#ffd166');
-mesh(cyl(0.06, 0.05, 0.14, 10), mat('#ffffff'), 2.2, F0 + 0.93, 3.95, building);
-(() => { const g = chair(3.3, 2.6, '#2a2440', Math.PI); g.scale.set(1.2, 1.25, 1.2); })();
-screen(building, 2.75, F0 + 2.2, 0.15, 3.4, 1.9, 0, '#3ee6ff');
-box(building, 0.1, 1.2, 0.65, 4.4, F0, F0 + 3.3, mat('#5a3c34', { roughness: 0.6 }));
+box(bossG, 1.8, 3.6, 4.8, 4.5, F0, F0 + 0.8, mat('#7a5540', { roughness: 0.45 }));
+box(bossG, 1.75, 3.55, 4.85, 4.55, F0 + 0.8, F0 + 0.86, mat('#a37656', { roughness: 0.35 }));
+screen(bossG, 3.3, F0 + 1.25, 3.85, 0.9, 0.5, Math.PI, '#ffd166');
+mesh(cyl(0.06, 0.05, 0.14, 10), mat('#ffffff'), 2.2, F0 + 0.93, 3.95, bossG);
+(() => { const g = chair(3.3, 2.6, '#2a2440', Math.PI); bossG.add(g); g.scale.set(1.2 / 1.6, 1.25, 1.2 / 1.6); })();
+screen(bossG, 2.75, F0 + 2.2, 0.15, 3.4, 1.9, 0, '#3ee6ff');
+box(bossG, 0.1, 1.2, 0.65, 4.4, F0, F0 + 3.3, mat('#5a3c34', { roughness: 0.6 }));
 seed = 41;
-for (let z = 0; z < 3; z++) for (let y = 1.3; y < 4.25;) { const w = 0.1 + rnd() * 0.12, hh = 0.42 + rnd() * 0.2; box(building, 0.66, y, 0.72, y + w, F0 + 0.25 + z * 1.0, F0 + 0.25 + z * 1.0 + hh, mat(pick(['#b48cff', '#ff6fc8', '#3ee6ff', '#ffd166', '#e9e2d0', '#7a6cff', '#ff9a8b', '#3fdc8a']))); y += w + 0.03; }
-box(building, 4.9, 0.35, 6.6, 0.95, F0, F0 + 0.9, mat('#4a342c'));
-const tank = box(building, 4.95, 0.4, 6.55, 0.9, F0 + 0.9, F0 + 2.0, new THREE.MeshStandardMaterial({ color: '#5fc8ff', transparent: true, opacity: 0.45, emissive: '#1b78c0', emissiveIntensity: 0.5, roughness: 0.05 }), false);
-const fish = ['#ff9466', '#ffd166', '#ff6fc8'].map((c, k) => mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(c, { emissive: c, emissiveIntensity: 0.2 }), 5.7, F0 + 1.3 + k * 0.2, 0.65, building, false));
+for (let z = 0; z < 3; z++) for (let y = 1.3; y < 4.25;) { const w = 0.1 + rnd() * 0.12, hh = 0.42 + rnd() * 0.2; box(bossG, 0.66, y, 0.72, y + w, F0 + 0.25 + z * 1.0, F0 + 0.25 + z * 1.0 + hh, mat(pick(['#b48cff', '#ff6fc8', '#3ee6ff', '#ffd166', '#e9e2d0', '#7a6cff', '#ff9a8b', '#3fdc8a']))); y += w + 0.03; }
+box(bossG, 4.9, 0.35, 6.6, 0.95, F0, F0 + 0.9, mat('#4a342c'));
+const tank = box(bossG, 4.95, 0.4, 6.55, 0.9, F0 + 0.9, F0 + 2.0, new THREE.MeshStandardMaterial({ color: '#5fc8ff', transparent: true, opacity: 0.45, emissive: '#1b78c0', emissiveIntensity: 0.5, roughness: 0.05 }), false);
+const fish = ['#ff9466', '#ffd166', '#ff6fc8'].map((c, k) => mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(c, { emissive: c, emissiveIntensity: 0.2 }), 5.7, F0 + 1.3 + k * 0.2, 0.65, bossG, false));
 fish.forEach(f => f.scale.set(1.6, 1, 0.7));
-const pGlass = new THREE.MeshStandardMaterial({ color: '#e8f4ff', transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false, side: THREE.DoubleSide });
-[[0, 6.5, 7, 6.5], [7, 0, 7, 4.2], [7, 5.6, 7, 6.5]].forEach(([ax, ay, bx, by]) => { const g = facade(building, ax, ay, bx, by, F0, F0 + 3.6, pGlass, 1, 1, false); g.renderOrder = 2; box(building, Math.min(ax, bx) - 0.04, Math.min(ay, by) - 0.04, Math.max(ax, bx) + 0.04, Math.max(ay, by) + 0.04, F0 + 3.55, F0 + 3.65, mat('#b6bbe0')); });
-[[7, 4.2], [7, 5.6], [7, 6.5], [0, 6.5]].forEach(([x, y]) => box(building, x - 0.06, y - 0.06, x + 0.06, y + 0.06, F0, F0 + 3.65, mat('#b6bbe0')));
 // Sasa printer + cabinet, Nana's ads screen, Mimi ring light, Kiki headset wall, Lulu easel, Bobo studio, Wawa board
 box(building, 8.7, 1.2, 9.35, 1.8, F0, F0 + 1.05, mat('#d9dbe8'));
 box(building, 12.6, 1.2, 13.3, 1.9, F0, F0 + 1.6, mat('#c9c4dc'));
@@ -678,23 +682,6 @@ function animPlanet(t) {
   sparks.rotation.y = -t * 0.12;
 }
 
-// lounge: sofa, coffee table, foosball, coffee bar, lamp
-const sofaM = mat('#6658ad', { roughness: 0.85 });
-rbox(building, 2.6, 0.45, 1.0, 0.15, sofaM, 11, F0 + 0.35, 18.3);
-rbox(building, 2.6, 0.8, 0.3, 0.12, sofaM, 11, F0 + 0.7, 17.85);
-[9.75, 12.25].forEach(x => rbox(building, 0.3, 0.65, 1.0, 0.1, sofaM, x, F0 + 0.45, 18.3));
-rbox(building, 0.55, 0.18, 0.4, 0.08, mat('#ff6fc8'), 10.4, F0 + 0.68, 18.0); rbox(building, 0.55, 0.18, 0.4, 0.08, mat('#3ee6ff'), 11.6, F0 + 0.68, 18.0);
-box(building, 10.3, 19.6, 11.7, 20.2, F0, F0 + 0.45, mat('#9a7454', { roughness: 0.4 }));
-box(building, 12.65, 19.05, 14.75, 19.85, F0 + 0.55, F0 + 0.95, mat('#2f7a4a'));
-box(building, 12.6, 19.0, 14.8, 19.9, F0 + 0.9, F0 + 0.96, mat('#5a3c2a'));
-[[12.7, 19.1], [14.7, 19.1], [12.7, 19.8], [14.7, 19.8]].forEach(([x, y]) => box(building, x - 0.05, y - 0.05, x + 0.05, y + 0.05, F0, F0 + 0.55, mat('#5a3c2a')));
-for (let k = 0; k < 4; k++) { const r = mesh(cyl(0.02, 0.02, 1.3, 6), deskLeg, 12.9 + k * 0.6, F0 + 0.82, 19.45, building, false); r.rotation.x = Math.PI / 2; }
-box(building, 15.6, 17.5, 16.4, 19.7, F0, F0 + 1.05, mat('#3a3560'));
-box(building, 15.55, 17.45, 16.45, 19.75, F0 + 1.05, F0 + 1.1, mat('#9a7050'));
-box(building, 15.7, 17.7, 16.25, 18.3, F0 + 1.1, F0 + 1.75, mat('#d9dbe8', { metalness: 0.4, roughness: 0.3 }));
-mesh(sph(0.05), new THREE.MeshStandardMaterial({ color: '#f33', emissive: '#f33', emissiveIntensity: 1.5 }), 16.27, F0 + 1.6, 17.95, building, false);
-mesh(cyl(0.04, 0.04, 2.6, 8), mat('#c9a14a', { metalness: 0.6 }), 9.4, F0 + 1.3, 21.0, building);
-mesh(new THREE.ConeGeometry(0.35, 0.4, 16, 1, true), new THREE.MeshStandardMaterial({ color: '#ffe2b0', emissive: '#ffd08a', emissiveIntensity: 0.6, side: THREE.DoubleSide }), 9.4, F0 + 2.7, 21.0, building, false);
 // pet corner
 mesh(cyl(0.75, 0.8, 0.22, 24), mat('#c9668a'), 8.4, F0 + 0.11, 16.4, building);
 mesh(cyl(0.58, 0.58, 0.06, 24), mat('#f6d9e4'), 8.4, F0 + 0.24, 16.4, building);
@@ -800,6 +787,154 @@ box(scene, MX - 7.6, MY - 0.3, MX + 7.6, MY + 0.3, 1.0, 4.8, mat('#f4f5f8'));
 facade(scene, MX + 7.4, MY + 0.32, MX - 7.4, MY + 0.32, 1.05, 4.75, monM, 14.8, 3.7, false);
 facade(scene, MX - 7.4, MY - 0.32, MX + 7.4, MY - 0.32, 1.05, 4.75, monM, 14.8, 3.7, false);
 [-1, 1].forEach(s => glow(MX + s * 6, 1.2, MY + 1.4, '#ffd98a', 5));
+
+/* ---------- floors: 1F office · 2F break floor (cinema, games, pantry) · 3F the boss's floor ---------- */
+// The page's simulation still has one floor plan. Two of its rooms are shown on upper floors:
+// Wilson's room (x<7, y<6.5) becomes the whole 3rd floor, the lounge (9.2–16.8 × 17.2–21.4) the 2nd floor.
+const FY = [0, F0, H1 + 0.5, H1 + 0.5 + 3.6];           // floor level of 1F, 2F, 3F
+const SB = 1.6, OXB = (GX - 7 * SB) / 2, OYB = (GY - 6.5 * SB) / 2 + 0.6;
+const SL = 1.7, OXL = (GX - 7.6 * SL) / 2, OYL = 7.6;
+const inBoss = (x, y) => x < 7 && y < 6.5, inLounge = (x, y) => x > 9.2 && x < 16.8 && y > 17.2 && y < 21.4;
+function floorOf(x, y) { return inBoss(x, y) ? 3 : inLounge(x, y) ? 2 : 1; }
+function floorPos(x, y, out) {
+  const k = floorOf(x, y);
+  if (k === 3) { out.x = OXB + x * SB; out.y = OYB + y * SB; }
+  else if (k === 2) { out.x = OXL + (x - 9.2) * SL; out.y = OYL + (y - 17.2) * SL; }
+  else { out.x = x; out.y = y; }
+  out.f = k; out.h = FY[k]; return out;
+}
+bossG.position.set(OXB, FY[3] - F0, OYB); bossG.scale.set(SB, 1, SB);
+
+const floor2 = new THREE.Group(), floor3 = new THREE.Group(); scene.add(floor2, floor3);
+const neon = (c, k = 1.6) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: k });
+const neonMats = [];
+function neonStrip(parent, ax, ay, bx, by, h, c) { const m = neon(c); neonMats.push(m); return box(parent, Math.min(ax, bx) - 0.03, Math.min(ay, by) - 0.03, Math.max(ax, bx) + 0.03, Math.max(ay, by) + 0.03, h, h + 0.04, m, false); }
+function floorSign(parent, x, h, y, text, sub, c, rotY = 0, w = 5) {
+  const t = canvasTex(1024, 256, g => {
+    g.clearRect(0, 0, 1024, 256); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = c; g.shadowBlur = 30; g.fillStyle = c; g.font = "800 120px 'Space Grotesk','Inter',sans-serif"; g.fillText(text, 512, 104);
+    g.shadowBlur = 12; g.fillStyle = '#ffffff'; g.font = "700 54px 'Noto Sans SC','Microsoft YaHei',sans-serif"; g.fillText(sub, 512, 210);
+  });
+  const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  const p = mesh(new THREE.PlaneGeometry(w, w / 4), m, x, h, y, parent, false, false); p.rotation.y = rotY; return p;
+}
+function slab(parent, k, matTop) {
+  box(parent, BX0, BY0, BX1, BY1, FY[k] - 0.5, FY[k] - 0.02, mat('#2b2f45', { roughness: 0.6 }));
+  const f = mesh(new THREE.PlaneGeometry(GX, GY), matTop, GX / 2, FY[k] - 0.01, GY / 2, parent, false, true); f.rotation.x = -Math.PI / 2;
+  // glowing edge around the floor + low glass rail on all four sides
+  [[BX0, BY0, BX1, BY0], [BX1, BY0, BX1, BY1], [BX1, BY1, BX0, BY1], [BX0, BY1, BX0, BY0]].forEach(([ax, ay, bx, by]) => {
+    neonStrip(parent, ax, ay, bx, by, FY[k] - 0.06, '#3ee6ff');
+    const g = facade(parent, ax, ay, bx, by, FY[k], FY[k] + 3.2, glassM, 1, 1, false); g.renderOrder = 2;
+    box(parent, Math.min(ax, bx) - 0.08, Math.min(ay, by) - 0.08, Math.max(ax, bx) + 0.08, Math.max(ay, by) + 0.08, FY[k] + 3.1, FY[k] + 3.2, frameM);
+  });
+}
+// elevators: a glass lift with glowing doors on every floor where people arrive
+function lift(parent, x, y, h, rotY, label) {
+  const g = new THREE.Group(); g.position.set(x, h, y); g.rotation.y = rotY; parent.add(g);
+  rbox(g, 2.2, 3.0, 0.5, 0.08, mat('#20233a', { metalness: 0.6, roughness: 0.3 }), 0, 1.5, -0.25);
+  [-0.48, 0.48].forEach(dx => rbox(g, 0.9, 2.4, 0.06, 0.03, mat('#c9d3ea', { metalness: 0.9, roughness: 0.18 }), dx, 1.25, 0.02));
+  const lm = neon('#3ee6ff', 2.2); neonMats.push(lm);
+  box(g, -1.05, -0.03, 1.05, 0.03, 2.55, 2.62, lm, false); box(g, -1.05, -0.03, -1.0, 0.03, 0, 2.6, lm, false); box(g, 1.0, -0.03, 1.05, 0.03, 0, 2.6, lm, false);
+  floorSign(g, 0, 2.85, 0.04, label, '电梯 LIFT', '#3ee6ff', 0, 1.8);
+  return g;
+}
+
+/* 1F: reception where Wilson's room was, lifts up to 2F and 3F */
+{
+  const rec = mat('#f4f4fa', { roughness: 0.3 }), gold = mat('#d8b25a', { metalness: 0.8, roughness: 0.25 });
+  rbox(building, 3.4, 1.05, 1.0, 0.25, rec, 3.6, F0 + 0.53, 3.9); box(building, 1.9, 4.38, 5.3, 4.42, F0 + 0.3, F0 + 0.36, gold);
+  box(building, 0.3, 0.3, 6.8, 0.5, F0, F0 + 3.6, mat('#1b1e33', { roughness: 0.5 }));
+  floorSign(building, 3.5, F0 + 2.4, 0.52, 'MACTION', '欢迎光临 · 接待处', '#ff4a5a', 0, 5.5);
+  lift(building, 7.4, 4.9, F0, -Math.PI / 2, '3F 老板');
+  lift(building, 13, 16.9, F0, Math.PI, '2F 休闲');
+  floorSign(building, 13, F0 + 0.03, 19.6, '2F ↑', '休闲区 · 电影 · 游戏 · 茶点', '#ff6fc8', 0, 4).rotation.x = -Math.PI / 2;
+}
+
+/* 2F: cinema, game zone, pantry, nap pods */
+{
+  const P = floor2, h = FY[2];
+  const carpet = canvasTex(256, 256, (g, w) => { g.fillStyle = '#2a2350'; g.fillRect(0, 0, w, w); seed = 12; for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${120 + rnd() * 80},${90 + rnd() * 60},${200 + rnd() * 55},${rnd() * 0.25})`; g.fillRect(rnd() * w, rnd() * w, 2, 2); } }, true); carpet.repeat.set(8, 8);
+  slab(P, 2, new THREE.MeshStandardMaterial({ map: carpet, roughness: 0.9 }));
+  lift(P, 13, OYL - 0.7, h, Math.PI, '1F ↓');
+  floorSign(P, 13, h + 3.0, OYL - 1.2, '2F · LOUNGE', '休息 · 电影 · 游戏 · 茶点', '#ff6fc8', 0, 6);
+  // centre (where the lounge visits land): ping-pong between FOOS_L and FOOS_R, sofa at SOFA, coffee bar at COFFEE
+  const tb = new THREE.Group(); tb.position.set(OXL + (13.7 - 9.2) * SL, h, OYL + (19.45 - 17.2) * SL); P.add(tb);
+  rbox(tb, 2.74, 0.06, 1.52, 0.02, mat('#1f5fd6', { roughness: 0.4 }), 0, 0.76, 0); box(tb, -0.02, -0.76, 0.02, 0.76, 0.79, 0.95, mat('#ffffff'), false);
+  box(tb, -1.37, -0.01, 1.37, 0.01, 0.79, 0.795, mat('#ffffff'), false);
+  [[-1.1, -0.6], [1.1, -0.6], [-1.1, 0.6], [1.1, 0.6]].forEach(([x, z]) => box(tb, x - 0.04, z - 0.04, x + 0.04, z + 0.04, 0, 0.73, deskLeg));
+  const sofaM2 = mat('#8a4fd8', { roughness: 0.85 });
+  const sx = OXL + (11.0 - 9.2) * SL, sy = OYL + (19.1 - 17.2) * SL;
+  rbox(P, 2.6, 0.45, 1.0, 0.15, sofaM2, sx, h + 0.35, sy + 0.8); rbox(P, 2.6, 0.8, 0.3, 0.12, sofaM2, sx, h + 0.7, sy + 1.25);
+  const cx = OXL + (15.0 - 9.2) * SL + 0.9, cy = OYL + (18.5 - 17.2) * SL;
+  rbox(P, 1.0, 1.05, 2.6, 0.08, mat('#1d1b2e'), cx, h + 0.53, cy); box(P, cx - 0.55, cy - 1.35, cx + 0.55, cy + 1.35, h + 1.05, h + 1.1, mat('#c9a06a'));
+  neonStrip(P, cx - 0.52, cy - 1.3, cx - 0.52, cy + 1.3, h + 0.9, '#ff9466');
+  box(P, cx - 0.2, cy - 0.8, cx + 0.2, cy - 0.3, h + 1.1, h + 1.6, mat('#d9dbe8', { metalness: 0.6, roughness: 0.3 }));
+  [-0.1, 0.5, 1.0].forEach(dz => mesh(cyl(0.07, 0.06, 0.16, 12), mat(pick(['#ffffff', '#ffd166', '#ff9466'])), cx, h + 1.18, cy + dz, P));
+  // cinema (front-left): big glowing screen + three rows of sofas
+  const scr = new THREE.MeshStandardMaterial({ color: '#0b0b18', emissive: '#7a5cff', emissiveIntensity: 1.2 }); neonMats.push(scr);
+  const cinTex = canvasTex(1024, 512, g => { const gr = g.createLinearGradient(0, 0, 1024, 512); gr.addColorStop(0, '#2b1d7a'); gr.addColorStop(1, '#ff4fa8'); g.fillStyle = gr; g.fillRect(0, 0, 1024, 512); g.fillStyle = 'rgba(255,255,255,.9)'; g.font = "800 90px 'Space Grotesk',sans-serif"; g.textAlign = 'center'; g.fillText('NOW SHOWING', 512, 220); g.font = "700 60px 'Noto Sans SC','Microsoft YaHei',sans-serif"; g.fillText('MACTION 电影之夜 🍿', 512, 330); });
+  scr.emissiveMap = cinTex; scr.emissive.set('#ffffff'); scr.emissiveIntensity = 0.9;
+  const sc = mesh(new THREE.PlaneGeometry(6.4, 3.0), scr, 0.25, h + 2.0, 18.3, P, false, false); sc.rotation.y = Math.PI / 2;
+  box(P, 0.1, 15.0, 0.25, 21.6, h, h + 3.4, mat('#14122a'));
+  for (let r = 0; r < 3; r++) { const x = 3.6 + r * 2.0; box(P, x - 0.9, 15.4, x + 0.9, 21.2, h, h + 0.12 * r, mat('#231d44'));
+    [16.3, 18.3, 20.3].forEach(y => { rbox(P, 1.0, 0.45, 1.6, 0.15, mat(r === 0 ? '#c2304d' : '#a0283f', { roughness: 0.85 }), x, h + 0.12 * r + 0.3, y); rbox(P, 0.3, 0.8, 1.6, 0.12, mat('#8a2236', { roughness: 0.85 }), x + 0.45, h + 0.12 * r + 0.6, y); }); }
+  neonStrip(P, 0.3, 15.0, 9.0, 15.0, h + 0.02, '#ff6fc8');
+  floorSign(P, 5, h + 3.0, 15.0, 'CINEMA', '电影院', '#ff6fc8', 0, 4.5);
+  mesh(cyl(0.35, 0.28, 0.6, 16), mat('#e83b3b'), 8.8, h + 0.3, 21.0, P); mesh(sph(0.36, 14, 10), mat('#fff3d0'), 8.8, h + 0.66, 21.0, P);
+  // game zone (front-right): arcade cabinets, VR ring, console corner with bean bags
+  const arcade = (x, y, c) => { const g = new THREE.Group(); g.position.set(x, h, y); g.rotation.y = -Math.PI / 2; P.add(g);
+    rbox(g, 0.9, 1.9, 0.8, 0.08, mat('#15142a'), 0, 0.95, 0); const s = new THREE.MeshStandardMaterial({ color: '#000', emissive: c, emissiveIntensity: 1.6 }); neonMats.push(s);
+    const f = mesh(new THREE.PlaneGeometry(0.7, 0.55), s, 0, 1.35, 0.41, g, false, false); f.rotation.x = -0.25;
+    box(g, -0.45, 0.38, 0.45, 0.42, 1.88, 1.96, s, false); rbox(g, 0.85, 0.12, 0.35, 0.04, mat('#2a2848'), 0, 0.95, 0.45); };
+  [[25.1, 15.8, '#3ee6ff'], [25.1, 17.0, '#ff6fc8'], [25.1, 18.2, '#ffd166'], [25.1, 19.4, '#3fdc8a']].forEach(([x, y, c]) => arcade(x, y, c));
+  const vr = new THREE.MeshStandardMaterial({ color: '#3ee6ff', emissive: '#3ee6ff', emissiveIntensity: 2, transparent: true, opacity: 0.85 }); neonMats.push(vr);
+  const vring = mesh(new THREE.RingGeometry(1.0, 1.15, 48), vr, 21.0, h + 0.03, 18.0, P, false, false); vring.rotation.x = -Math.PI / 2;
+  floorSign(P, 21, h + 3.0, 15.0, 'GAME ZONE', '游戏区', '#3ee6ff', 0, 4.5);
+  screen(P, 17.0, h + 1.5, 21.6, 2.6, 1.4, Math.PI, '#ff9466');
+  [[16.2, 19.9, '#ffd166'], [17.8, 19.9, '#3ee6ff']].forEach(([x, y, c]) => { const b = mesh(sph(0.5, 16, 12), mat(c, { roughness: 0.9 }), x, h + 0.35, y, P); b.scale.set(1, 0.65, 1); });
+  neonStrip(P, 14.5, 15.0, 25.8, 15.0, h + 0.02, '#3ee6ff');
+  // pantry (back-left): counter, fridge, snack wall, round tables with stools
+  floorSign(P, 4.2, h + 3.0, 0.4, 'PANTRY', '茶点 · 饮食区', '#ffd166', 0, 4.5);
+  rbox(P, 6.0, 1.0, 0.8, 0.06, mat('#f4f4fa', { roughness: 0.3 }), 4.2, h + 0.5, 1.0); box(P, 1.2, 0.55, 7.2, 1.45, h + 1.0, h + 1.06, mat('#c9a06a'));
+  rbox(P, 0.9, 2.1, 0.8, 0.06, mat('#d9dbe8', { metalness: 0.7, roughness: 0.25 }), 7.9, h + 1.05, 0.9);
+  box(P, 0.2, 2.2, 0.35, 6.2, h + 0.8, h + 2.6, mat('#3a2c24'));
+  seed = 61; for (let r = 0; r < 3; r++) for (let k = 0; k < 9; k++) box(P, 0.36, 2.4 + k * 0.42, 0.5, 2.7 + k * 0.42, h + 0.95 + r * 0.55, h + 1.25 + r * 0.55, mat(pick(['#ff6fc8', '#ffd166', '#3ee6ff', '#ff9466', '#3fdc8a', '#ffffff'])));
+  [[3.0, 4.4], [6.0, 4.4], [3.0, 6.0]].forEach(([x, y]) => { mesh(cyl(0.55, 0.55, 0.05, 24), mat('#ffffff', { roughness: 0.3 }), x, h + 0.75, y, P); mesh(cyl(0.06, 0.2, 0.72, 10), deskLeg, x, h + 0.36, y, P);
+    [0, 1, 2, 3].forEach(q => { const a = q * Math.PI / 2 + 0.4; mesh(cyl(0.2, 0.2, 0.06, 14), mat(pick(['#ffd166', '#ff6fc8', '#3ee6ff'])), x + Math.cos(a) * 0.85, h + 0.5, y + Math.sin(a) * 0.85, P); }); });
+  // nap pods (back-right)
+  floorSign(P, 22, h + 3.0, 0.4, 'NAP & MASSAGE', '休息舱 · 按摩椅', '#3fdc8a', 0, 4.5);
+  [19.6, 22.0, 24.4].forEach(x => { const pod = mesh(new THREE.CapsuleGeometry(0.7, 1.3, 8, 18), mat('#f2f0f6', { roughness: 0.3 }), x, h + 0.75, 3.0, P); pod.rotation.x = Math.PI / 2;
+    const w = mesh(sph(0.62, 18, 12), new THREE.MeshStandardMaterial({ color: '#1b2440', emissive: '#3fdc8a', emissiveIntensity: 0.6, transparent: true, opacity: 0.8 }), x, h + 0.95, 2.2, P, false); w.scale.set(0.9, 0.6, 0.6); });
+  [[1.0, 13.0], [25.0, 8.0], [12.5, 14.6], [9.4, 1.0], [25.0, 13.0]].forEach(([x, y]) => plant(x, y, 1.2, P, h));
+}
+
+/* 3F: the boss's floor (Wilson's room scaled up) + meeting room, guest lounge, trophy wall */
+{
+  const P = floor3, h = FY[3];
+  const wt = woodTex.clone(); wt.repeat.set(9, 8); wt.needsUpdate = true;
+  slab(P, 3, new THREE.MeshStandardMaterial({ map: wt, roughness: 0.4 }));
+  const mx = OXB + 6.2 * SB + 1.3, my = OYB + 4.9 * SB;
+  lift(P, mx + 0.3, my, h, -Math.PI / 2, '1F ↓');
+  floorSign(P, GX / 2, h + 3.0, 0.4, 'WILSON · CEO', '3F 老板办公室 · MACTION', '#ffd166', 0, 7);
+  // meeting room (left)
+  const mt = mat('#2a2238', { roughness: 0.35 });
+  rbox(P, 2.0, 0.08, 6.0, 0.04, mat('#a37656', { roughness: 0.35 }), 3.6, h + 0.78, 11.0); box(P, 3.4, 9.0, 3.8, 13.0, h, h + 0.74, mt);
+  [9.0, 10.3, 11.6, 13.0].forEach(y => [2.2, 5.0].forEach(x => { const c = chair(x, y, '#2a2440', x < 3.6 ? -Math.PI / 2 : Math.PI / 2); c.position.y = h; P.add(c); }));
+  screen(P, 3.6, h + 1.8, 7.4, 2.8, 1.5, 0, '#3ee6ff');
+  floorSign(P, 3.6, h + 3.0, 7.0, 'MEETING', '会议室', '#3ee6ff', 0, 3.5);
+  // guest lounge (right): leather sofas round a glowing table
+  const leather = mat('#5a3a2a', { roughness: 0.55 });
+  [[22.8, 4.6, 0], [22.8, 9.2, Math.PI]].forEach(([x, y, r]) => { const g = new THREE.Group(); g.position.set(x, h, y); g.rotation.y = r; P.add(g); rbox(g, 3.0, 0.45, 1.0, 0.15, leather, 0, 0.35, 0); rbox(g, 3.0, 0.8, 0.3, 0.12, leather, 0, 0.7, -0.45); });
+  mesh(cyl(0.9, 0.9, 0.08, 32), mat('#f4f4fa', { roughness: 0.2 }), 22.8, h + 0.45, 6.9, P); const gl3 = neon('#ffd166', 1.4); neonMats.push(gl3); mesh(cyl(0.92, 0.92, 0.02, 32), gl3, 22.8, h + 0.4, 6.9, P, false);
+  // trophy & whisky wall (right side, back)
+  box(P, 25.4, 11.0, 25.7, 19.0, h, h + 3.0, mat('#1b1e33'));
+  for (let r = 0; r < 3; r++) { box(P, 25.0, 11.2, 25.4, 18.8, h + 0.9 + r * 0.8, h + 0.94 + r * 0.8, mat('#c9a06a'));
+    for (let k = 0; k < 7; k++) mesh(r === 1 ? new THREE.ConeGeometry(0.13, 0.42, 12) : cyl(0.07, 0.08, 0.36, 10), r === 1 ? mat('#d8b25a', { metalness: 0.9, roughness: 0.2 }) : mat(pick(['#8a3a12', '#c27a2a', '#2a4a2a']), { roughness: 0.15 }), 25.2, h + 1.15 + r * 0.8, 11.8 + k * 1.0, P); }
+  neonStrip(P, 25.0, 11.0, 25.0, 19.0, h + 3.0, '#ffd166');
+  // gold carpet path from the lift to the desk
+  const rp = mesh(new THREE.PlaneGeometry(3.2, 1.6), mat('#7a1f2e', { roughness: 0.9 }), mx - 1.8, h + 0.015, my, P, false, true); rp.rotation.x = -Math.PI / 2;
+  [[1.0, 1.2], [25.0, 1.2], [1.0, 20.8], [25.0, 20.8], [17.0, 20.8], [9.0, 20.8]].forEach(([x, y]) => plant(x, y, 1.3, P, h));
+}
 
 /* ---------- people ---------- */
 const LOOK = {
@@ -1123,12 +1258,14 @@ function size() {
   const w = cv.clientWidth || stage.clientWidth, h = cv.clientHeight || stage.clientHeight;
   const pr = Math.min(2, devicePixelRatio || 1);
   if (w === W && h === H && pr === renderer.getPixelRatio()) return; W = w; H = h; renderer.setPixelRatio(pr);
-  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false); composer.setPixelRatio(pr); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 const cSky = { d: ['#5aa9ff', '#d9efff'], k: ['#3b2d7a', '#ff9e7a'], n: ['#05061a', '#1a1a48'] };
 const tmpA = new THREE.Color(), tmpB = new THREE.Color(), tmpC = new THREE.Color();
 function mix3(key) { const a = cSky.d[key], b = cSky.k[key], c = cSky.n[key]; tmpA.set(a).multiplyScalar(WT.d).add(tmpB.set(b).multiplyScalar(WT.k)).add(tmpC.set(c).multiplyScalar(WT.n)); return tmpA.clone(); }
-let upperF = 1;
+let upperF = 1, mode = 'out', upT = 1;
+const fp = { x: 0, y: 0, f: 1, h: 0 };
+function setMode(m) { mode = m; upT = m === 'out' ? 1 : 0; floor2.visible = m === 2; floor3.visible = bossG.visible = m === 3; document.dispatchEvent(new CustomEvent('o3floor', { detail: m })); }
 function setUpper(f) {
   if (Math.abs(f - upperF) < 0.002) return; upperF = f;
   upper.visible = f > 0.01;
@@ -1149,7 +1286,9 @@ function render(t) {
   controls.update();
   controls.target.x = Math.max(-60, Math.min(GX + 60, controls.target.x)); controls.target.z = Math.max(-60, Math.min(GY + 60, controls.target.z)); controls.target.y = Math.max(0, Math.min(30, controls.target.y));
   const dist = camera.position.distanceTo(controls.target);
-  const f = smooth(34, 52, dist); setUpper(f); O3.inside = 1 - f;
+  if (mode !== 'out' && dist > 85 && !fly) setMode('out');
+  setUpper(upT ? Math.min(1, upperF + dt * 2.5) : Math.max(0, upperF - dt * 2.5));
+  O3.inside = mode === 'out' ? 0 : 1;
   // time of day
   const N = Math.min(1, WT.n + WT.k * 0.6);
   skyU.top.value.copy(mix3(0)); skyU.bot.value.copy(mix3(1)); scene.fog.color.copy(skyU.bot.value);
@@ -1186,7 +1325,8 @@ function render(t) {
     else if (seated) face = id === 'wilson' ? 0 : Math.PI;
     else if (a.facePl) face = Math.atan2(a.facePl[0], a.facePl[1]);
     if (face != null) p.yaw = yawTo(p.yaw, face, Math.min(1, dt * 10));
-    p.root.position.set(a.pos.x, F0 + (a.z || 0) * HZ, a.pos.y);
+    floorPos(a.pos.x, a.pos.y, fp); p.root.position.set(fp.x, fp.h + (a.z || 0) * HZ, fp.y);
+    p.root.visible = mode === 'out' ? fp.f === 1 : fp.f === mode;
     p.root.rotation.y = p.yaw;
     const ph = t * 9 + (a.phase || 0);
     p.walk = lerp(p.walk, walking ? 1 : 0, Math.min(1, dt * 8));
@@ -1217,31 +1357,33 @@ function render(t) {
     const m = pets[i], dx = q.pos.x - m.px, dy = q.pos.y - m.py, moved = Math.hypot(dx, dy); m.px = q.pos.x; m.py = q.pos.y;
     if (moved > 0.0005) m.yaw = yawTo(m.yaw, Math.atan2(dx, dy), Math.min(1, dt * 10));
     const hop = (q.jump || 0) > 0 ? Math.abs(Math.sin(q.jump * 9)) * 0.35 : 0;
-    m.g.position.set(q.pos.x, F0 + (q.z || 0) * HZ + hop, q.pos.y); m.g.rotation.y = m.yaw;
+    floorPos(q.pos.x, q.pos.y, fp); m.g.position.set(fp.x, fp.h + (q.z || 0) * HZ + hop, fp.y); m.g.rotation.y = m.yaw; m.g.visible = mode === 'out' ? fp.f === 1 : fp.f === mode;
     const walk = moved > 0.0005, ph = t * 14 + i;
     m.legs.forEach((l, k) => { l.rotation.x = walk ? Math.sin(ph + (k % 2 ? Math.PI : 0) + (k > 1 ? Math.PI / 2 : 0)) * 0.6 : 0; });
     m.g.scale.y = q.sleep ? 0.75 : 1;
     m.head.rotation.x = q.sleep ? 0.5 : Math.sin(t * 1.5 + i) * 0.08;
     if (m.tail) m.tail.rotation.z = Math.sin(t * 3 + i) * 0.4;
   });
-  vac.position.set(bot.pos.x, F0, bot.pos.y); vac.rotation.y = -(bot.ang || 0);
+  vac.visible = mode === 'out' || mode === 1; vac.position.set(bot.pos.x, F0, bot.pos.y); vac.rotation.y = -(bot.ang || 0);
   // labels: a metre at the camera target, in screen pixels
   const pxPerM = H / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * dist);
   S.setTW(pxPerM * 1.42);
-  renderer.render(scene, camera);
+  composer.render();
 }
 
 const O3 = window.O3 = { people,
   look(x, y, dist, polar) { flyTo(new THREE.Vector3(x, 1, y), dist, polar); },
-  inside: 0, render, camera, controls, get flying() { return fly; },
+  inside: 0, render, camera, controls, get flying() { return fly; }, get floor() { return mode; },
+  visXY(x, y) { return mode !== 'out' && floorOf(x, y) === mode; },
   turn(dir) { const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)); flyTo(controls.target, sph.radius, sph.phi, sph.theta + dir * Math.PI / 2); },
   setOrbit(on) { controls.autoRotate = !!on; },
   zoom(dir) { const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)); flyTo(controls.target, Math.max(controls.minDistance, Math.min(controls.maxDistance, sph.radius * (dir > 0 ? 0.62 : 1.6))), sph.phi, sph.theta); },
-  enter() { flyTo(new THREE.Vector3(GX / 2, 1, GY / 2), 30, 0.85); },
-  outside() { flyTo(new THREE.Vector3(GX / 2, 10, GY / 2 + 4), 100, 1.05); },
+  enter(k = 1) { setMode(k); flyTo(new THREE.Vector3(GX / 2, FY[k] + 1, GY / 2 + 1), 33, 0.9); },
+  outside() { setMode('out'); flyTo(new THREE.Vector3(GX / 2, 10, GY / 2 + 4), 100, 1.05); },
 };
+setMode('out');
 S.use3D((x, y, z = 0) => {
-  v3.set(x, F0 + z * HZ, y).project(camera);
+  floorPos(x, y, fp); v3.set(fp.x, fp.h + z * HZ, fp.y).project(camera);
   if (v3.z > 1) return [-9999, -9999];
   return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H];
 });
