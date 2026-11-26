@@ -534,6 +534,29 @@ const wood = mesh(new THREE.PlaneGeometry(7, 6.5), new THREE.MeshStandardMateria
 function rug(x0, y0, x1, y1, color, o = 0.012, rough = 0.95) { const r = mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), mat(color, { roughness: rough }), (x0 + x1) / 2, F0 + o, (y0 + y1) / 2, building, false, true); r.rotation.x = -Math.PI / 2; return r; }
 { const r = mesh(new THREE.PlaneGeometry(4.2, 3.0), mat('#a8425f', { roughness: 0.95 }), 3.4, F0 + 0.012, 4.6, bossG, false, true); r.rotation.x = -Math.PI / 2; }
 TEAM.forEach(id => { const [x0, y0, x1, y1] = AG[id].zone; const c = new THREE.Color(AG[id].color).lerp(new THREE.Color('#ffffff'), 0.55); rug(x0, y0, x1, y1, '#' + c.getHexString()); rug(x0, y0, x1, y0 + 0.12, AG[id].color, 0.016, 0.4); });
+// department partitions: frosted glass in each team's colour, open on the side facing the planet
+{
+  const frost = new THREE.MeshStandardMaterial({ color: '#eef3ff', transparent: true, opacity: 0.42, roughness: 0.25, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+  const PH = 1.25;
+  TEAM.forEach(id => {
+    const [x0, y0, x1, y1] = AG[id].zone, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const rail = new THREE.MeshStandardMaterial({ color: AG[id].color, emissive: AG[id].color, emissiveIntensity: 0.7, metalness: 0.3, roughness: 0.3 });
+    const dx = C.x - cx, dy = C.y - cy;
+    const open = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'x1' : 'x0') : (dy > 0 ? 'y1' : 'y0');
+    const edges = { x0: [x0, y0, x0, y1], x1: [x1, y0, x1, y1], y0: [x0, y0, x1, y0], y1: [x0, y1, x1, y1] };
+    const outer = { x0: x0 <= 1.2, x1: x1 >= GX - 1.2, y0: y0 <= 1.2, y1: y1 >= GY - 1.2 };
+    Object.entries(edges).forEach(([k, [ax, ay, bx, by]]) => {
+      if (k === open || outer[k]) return;
+      const t = 0.03, lx = Math.min(ax, bx) - t, ly = Math.min(ay, by) - t, hx = Math.max(ax, bx) + t, hy = Math.max(ay, by) + t;
+      const g = box(building, lx, ly, hx, hy, F0, F0 + PH, frost, false); g.renderOrder = 2;
+      box(building, lx - 0.02, ly - 0.02, hx + 0.02, hy + 0.02, F0 + PH, F0 + PH + 0.06, rail, false);
+      box(building, lx - 0.02, ly - 0.02, hx + 0.02, hy + 0.02, F0, F0 + 0.08, rail, false);
+    });
+    // posts at the open side's corners so the entrance reads clearly
+    const [ax, ay, bx, by] = edges[open];
+    [[ax, ay], [bx, by]].forEach(([px, py]) => box(building, px - 0.06, py - 0.06, px + 0.06, py + 0.06, F0, F0 + PH + 0.3, rail, false));
+  });
+}
 const hqRing = mesh(new THREE.RingGeometry(2.6, 3.0, 64), new THREE.MeshStandardMaterial({ color: '#3ee6ff', emissive: '#3ee6ff', emissiveIntensity: 0.8, transparent: true, opacity: 0.8 }), C.x, F0 + 0.02, C.y, building, false, false);
 hqRing.rotation.x = -Math.PI / 2;
 
@@ -829,15 +852,16 @@ function slab(parent, k, matTop) {
   });
 }
 // elevators: a glass lift with glowing doors on every floor where people arrive
-function lift(parent, x, y, h, rotY, label) {
+const LIFT_X = 7.4, LIFT_Y = 4.9, LIFT_R = -Math.PI / 2;   // one shaft, same spot on every floor
+function lift(parent, h, label, x = LIFT_X, y = LIFT_Y, rotY = LIFT_R) {
   const g = new THREE.Group(); g.position.set(x, h, y); g.rotation.y = rotY; parent.add(g);
   rbox(g, 2.2, 3.0, 0.5, 0.08, mat('#20233a', { metalness: 0.6, roughness: 0.3 }), 0, 1.5, -0.25);
   [-0.48, 0.48].forEach(dx => rbox(g, 0.9, 2.4, 0.06, 0.03, mat('#c9d3ea', { metalness: 0.9, roughness: 0.18 }), dx, 1.25, 0.02));
   const lm = neon('#3ee6ff', 2.2); neonMats.push(lm);
   box(g, -1.05, -0.03, 1.05, 0.03, 2.55, 2.62, lm, false); box(g, -1.05, -0.03, -1.0, 0.03, 0, 2.6, lm, false); box(g, 1.0, -0.03, 1.05, 0.03, 0, 2.6, lm, false);
-  floorSign(g, 0, 2.85, 0.04, label, '电梯 LIFT', '#3ee6ff', 0, 1.8);
+  floorSign(g, 0, 2.85, 0.04, label, '1F 办公 · 2F 休闲 · 3F 老板', '#3ee6ff', 0, 1.8);
   // back and sides: brushed panels, a glass window into the lit cabin, glowing rear edges
-  const panel = mat('#5a6688', { metalness: 0.75, roughness: 0.32 });
+  const panel = mat('#9aa6c8', { metalness: 0.35, roughness: 0.35 });
   rbox(g, 2.24, 3.04, 0.06, 0.03, panel, 0, 1.5, -0.53);
   [-1.13, 1.13].forEach(dx => rbox(g, 0.05, 3.0, 0.5, 0.02, panel, dx, 1.5, -0.25));
   const cab = new THREE.MeshStandardMaterial({ color: '#bfe9ff', emissive: '#7fd8ff', emissiveIntensity: 0.9, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.85 });
@@ -845,7 +869,7 @@ function lift(parent, x, y, h, rotY, label) {
   rbox(g, 1.3, 1.9, 0.03, 0.02, cab, 0, 1.45, -0.57);
   box(g, -0.7, -0.6, 0.7, -0.56, 0.45, 0.5, lm, false); box(g, -0.7, -0.6, 0.7, -0.56, 2.4, 2.45, lm, false);
   [-1.12, 1.12].forEach(dx => box(g, dx - 0.025, -0.58, dx + 0.025, -0.52, 0, 3.0, lm, false));
-  floorSign(g, 0, 2.75, -0.6, label, '电梯 LIFT', '#3ee6ff', Math.PI, 1.6);
+  floorSign(g, 0, 2.75, -0.6, 'LIFT', '电梯', '#3ee6ff', Math.PI, 1.6);
   return g;
 }
 
@@ -855,9 +879,7 @@ function lift(parent, x, y, h, rotY, label) {
   rbox(building, 3.4, 1.05, 1.0, 0.25, rec, 3.6, F0 + 0.53, 3.9); box(building, 1.9, 4.38, 5.3, 4.42, F0 + 0.3, F0 + 0.36, gold);
   box(building, 0.3, 0.3, 6.8, 0.5, F0, F0 + 3.6, mat('#1b1e33', { roughness: 0.5 }));
   floorSign(building, 3.5, F0 + 2.4, 0.52, 'MACTION', '欢迎光临 · 接待处', '#ff4a5a', 0, 5.5);
-  lift(building, 7.4, 4.9, F0, -Math.PI / 2, '3F 老板');
-  lift(building, 13, 16.9, F0, Math.PI, '2F 休闲');
-  floorSign(building, 13, F0 + 0.03, 19.6, '2F ↑', '休闲区 · 电影 · 游戏 · 茶点', '#ff6fc8', 0, 4).rotation.x = -Math.PI / 2;
+  lift(building, F0, '1F');
 }
 
 /* 2F: cinema, game zone, pantry, nap pods */
@@ -865,7 +887,7 @@ function lift(parent, x, y, h, rotY, label) {
   const P = floor2, h = FY[2];
   const carpet = canvasTex(256, 256, (g, w) => { g.fillStyle = '#2a2350'; g.fillRect(0, 0, w, w); seed = 12; for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${120 + rnd() * 80},${90 + rnd() * 60},${200 + rnd() * 55},${rnd() * 0.25})`; g.fillRect(rnd() * w, rnd() * w, 2, 2); } }, true); carpet.repeat.set(8, 8);
   slab(P, 2, new THREE.MeshStandardMaterial({ map: carpet, roughness: 0.9 }));
-  lift(P, 13, OYL - 0.7, h, Math.PI, '1F ↓');
+  lift(P, h, '2F');
   floorSign(P, 13, h + 3.0, OYL - 1.2, '2F · LOUNGE', '休息 · 电影 · 游戏 · 茶点', '#ff6fc8', 0, 6);
   // centre (where the lounge visits land): ping-pong between FOOS_L and FOOS_R, sofa at SOFA, coffee bar at COFFEE
   const tb = new THREE.Group(); tb.position.set(OXL + (13.7 - 9.2) * SL, h, OYL + (19.45 - 17.2) * SL); P.add(tb);
@@ -923,8 +945,7 @@ function lift(parent, x, y, h, rotY, label) {
   const P = floor3, h = FY[3];
   const wt = woodTex.clone(); wt.repeat.set(9, 8); wt.needsUpdate = true;
   slab(P, 3, new THREE.MeshStandardMaterial({ map: wt, roughness: 0.4 }));
-  const mx = OXB + 6.2 * SB + 1.3, my = OYB + 4.9 * SB;
-  lift(P, mx + 0.3, my, h, -Math.PI / 2, '1F ↓');
+  lift(P, h, '3F');
   floorSign(P, GX / 2, h + 3.0, 0.4, 'WILSON · CEO', '3F 老板办公室 · MACTION', '#ffd166', 0, 7);
   // meeting room (left)
   const mt = mat('#2a2238', { roughness: 0.35 });
@@ -941,8 +962,8 @@ function lift(parent, x, y, h, rotY, label) {
   for (let r = 0; r < 3; r++) { box(P, 25.0, 11.2, 25.4, 18.8, h + 0.9 + r * 0.8, h + 0.94 + r * 0.8, mat('#c9a06a'));
     for (let k = 0; k < 7; k++) mesh(r === 1 ? new THREE.ConeGeometry(0.13, 0.42, 12) : cyl(0.07, 0.08, 0.36, 10), r === 1 ? mat('#d8b25a', { metalness: 0.9, roughness: 0.2 }) : mat(pick(['#8a3a12', '#c27a2a', '#2a4a2a']), { roughness: 0.15 }), 25.2, h + 1.15 + r * 0.8, 11.8 + k * 1.0, P); }
   neonStrip(P, 25.0, 11.0, 25.0, 19.0, h + 3.0, '#ffd166');
-  // gold carpet path from the lift to the desk
-  const rp = mesh(new THREE.PlaneGeometry(3.2, 1.6), mat('#7a1f2e', { roughness: 0.9 }), mx - 1.8, h + 0.015, my, P, false, true); rp.rotation.x = -Math.PI / 2;
+  // red carpet in front of the lift doors
+  const rp = mesh(new THREE.PlaneGeometry(1.8, 2.4), mat('#7a1f2e', { roughness: 0.9 }), LIFT_X - 1.3, h + 0.015, LIFT_Y, P, false, true); rp.rotation.x = -Math.PI / 2;
   [[1.0, 1.2], [25.0, 1.2], [1.0, 20.8], [25.0, 20.8], [17.0, 20.8], [9.0, 20.8]].forEach(([x, y]) => plant(x, y, 1.3, P, h));
 }
 
