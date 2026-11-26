@@ -288,6 +288,56 @@ lane.count = laneN; lane.receiveShadow = true; scene.add(lane);
 const cityGroup = new THREE.Group(); scene.add(cityGroup);
 const cityMats = cityMaps.map((m, i) => new THREE.MeshStandardMaterial({ map: m, emissiveMap: towerLit, emissive: new THREE.Color('#ffd9a0'), emissiveIntensity: 0, roughness: 0.45, metalness: 0.15 }));
 const roofM = mat('#8d8aa0', { roughness: 0.9 });
+// neighbour buildings: stepped glass towers, round towers, lit blocks with rooftop screens
+const cityNeon = ['#3ee6ff', '#ff6fc8', '#7a5cff', '#ffd166', '#3fdc8a'].map(c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.4, roughness: 0.4 }));
+const glassCap = new THREE.MeshStandardMaterial({ color: '#9fd8ff', emissive: '#3ee6ff', emissiveIntensity: 0.2, metalness: 0.6, roughness: 0.15, transparent: true, opacity: 0.75 });
+const roundMats = cityMaps.map(m => { const t = m.clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(8, 6); t.needsUpdate = true;
+  return new THREE.MeshStandardMaterial({ map: t, emissiveMap: towerLit, emissive: new THREE.Color('#ffd9a0'), emissiveIntensity: 0, roughness: 0.2, metalness: 0.4 }); });
+const ADS = [['MACTION', '连锁 · 绩效 · 资本', '#7c3aed', '#db2777'], ['FRANCHISE', '一套系统 · 开遍全国', '#0e7490', '#3ee6ff'], ['GROWTH', '业绩翻倍 · 商业课程', '#b45309', '#ffd166'], ['AI OFFICE', '7 位 AI 员工 · 24 小时', '#1d4ed8', '#a855f7']];
+const adMats = ADS.map(([t1, t2, c1, c2]) => { const tx = canvasTex(1024, 384, g => { const gr = g.createLinearGradient(0, 0, 1024, 384); gr.addColorStop(0, c1); gr.addColorStop(1, c2); g.fillStyle = gr; g.fillRect(0, 0, 1024, 384);
+  g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = "800 150px 'Space Grotesk','Inter',sans-serif"; g.fillText(t1, 512, 190); g.font = "700 64px 'Noto Sans SC','Microsoft YaHei',sans-serif"; g.fillText(t2, 512, 300); });
+  return new THREE.MeshStandardMaterial({ map: tx, emissiveMap: tx, emissive: '#ffffff', emissiveIntensity: 0.5, roughness: 0.4 }); });
+function cornerFins(x0, y0, x1, y1, h0, h1, nm) { [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].forEach(([x, y]) => box(cityGroup, x - 0.12, y - 0.12, x + 0.12, y + 0.12, h0, h1, nm, false)); }
+function roofTop(x0, y0, x1, y1, h, nm) {
+  box(cityGroup, x0, y0, x1, y1, h, h + 0.4, roofM);
+  [[x0, y0, x1, y0], [x1, y0, x1, y1], [x0, y1, x1, y1], [x0, y0, x0, y1]].forEach(([ax, ay, bx2, by2]) => box(cityGroup, Math.min(ax, bx2) - 0.05, Math.min(ay, by2) - 0.05, Math.max(ax, bx2) + 0.05, Math.max(ay, by2) + 0.05, h + 0.4, h + 0.55, nm, false));
+}
+function cityBuilding(lx, ly, sw, sd, hgt, m, kind) {
+  const nm = cityNeon[Math.floor(rnd() * cityNeon.length)], cx = lx + sw / 2, cy = ly + sd / 2;
+  if (kind < 0.38) {            // stepped tower: three tiers with glowing bands
+    let x0 = lx, y0 = ly, x1 = lx + sw, y1 = ly + sd, h0 = 0.18;
+    const tiers = [0.5, 0.3, 0.2];
+    tiers.forEach((p, i) => {
+      const h1 = h0 + hgt * p * (i === 0 ? 1 : 1.25);
+      facadeBox(cityGroup, x0, y0, x1, y1, h0, h1, m, 3, 3.4);
+      box(cityGroup, x0 - 0.15, y0 - 0.15, x1 + 0.15, y1 + 0.15, h1, h1 + 0.35, nm, false);
+      const ix = (x1 - x0) * 0.14, iy = (y1 - y0) * 0.14; x0 += ix; x1 -= ix; y0 += iy; y1 -= iy; h0 = h1 + 0.35;
+    });
+    box(cityGroup, x0, y0, x1, y1, h0, h0 + 0.3, roofM);
+    mesh(cyl(0.08, 0.14, 6, 8), mat('#d9dbe8', { metalness: 0.8, roughness: 0.3 }), cx, h0 + 3.3, cy, cityGroup);
+    mesh(sph(0.35, 12, 8), nm, cx, h0 + 6.4, cy, cityGroup, false);
+  } else if (kind < 0.62) {     // round glass tower with a lit crown
+    const r = Math.min(sw, sd) / 2 - 0.5, hh = hgt * 1.2, rm = roundMats[Math.floor(rnd() * roundMats.length)];
+    mesh(cyl(r * 0.92, r, hh, 32), rm, cx, 0.18 + hh / 2, cy, cityGroup);
+    mesh(cyl(r * 1.1, r * 1.1, 0.8, 32), mat('#4a4f6a', { roughness: 0.5 }), cx, 0.58, cy, cityGroup);
+    for (let k = 1; k <= 3; k++) mesh(new THREE.TorusGeometry(r * (0.93 + 0.07 * (1 - k / 3)) + 0.05, 0.08, 6, 40), nm, cx, 0.18 + hh * k / 3.6, cy, cityGroup, false).rotation.x = Math.PI / 2;
+    mesh(cyl(r * 0.6, r * 0.92, 2.4, 32), glassCap, cx, 0.18 + hh + 1.2, cy, cityGroup, false);
+    mesh(new THREE.TorusGeometry(r * 0.92, 0.14, 8, 40), nm, cx, 0.18 + hh + 0.05, cy, cityGroup, false).rotation.x = Math.PI / 2;
+    mesh(cyl(0.06, 0.12, 5, 8), mat('#d9dbe8', { metalness: 0.8, roughness: 0.3 }), cx, 0.18 + hh + 4.8, cy, cityGroup);
+    mesh(sph(0.3, 12, 8), cityNeon[1], cx, 0.18 + hh + 7.4, cy, cityGroup, false);
+  } else {                      // lit block: LED corner fins, neon roof rim, rooftop screen
+    const h = hgt * 0.8;
+    facadeBox(cityGroup, lx, ly, lx + sw, ly + sd, 0.18, h, m, 3, 3.4);
+    cornerFins(lx, ly, lx + sw, ly + sd, 0.18, h + 0.4, nm);
+    roofTop(lx, ly, lx + sw, ly + sd, h, nm);
+    if (rnd() < 0.7) {
+      const am = adMats[Math.floor(rnd() * adMats.length)], w = Math.min(sw, sd) * 0.8, bd = mesh(new THREE.PlaneGeometry(w, w * 0.375), am, cx, h + 0.6 + w * 0.19 + 0.6, cy, cityGroup, false, false);
+      bd.rotation.y = [0, Math.PI / 2, Math.PI, -Math.PI / 2][Math.floor(rnd() * 4)];
+      const bk = bd.clone(); bk.rotation.y += Math.PI; cityGroup.add(bk);   // readable from both sides
+      [-0.35, 0.35].forEach(o => { const p = mesh(cyl(0.08, 0.08, 1.2, 6), roofM, 0, h + 1.0, 0, cityGroup); p.position.set(cx + Math.cos(bd.rotation.y) * o * w, h + 1.0, cy - Math.sin(bd.rotation.y) * o * w); });
+    } else box(cityGroup, lx + sw * 0.3, ly + sd * 0.3, lx + sw * 0.6, ly + sd * 0.55, h + 0.4, h + 2.2, mat('#b9b6c8'));
+  }
+}
 const trees = [];
 seed = 21;
 for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
@@ -301,10 +351,8 @@ for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
   }
   for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
     const lx = bx - BLOCK / 2 + 3 + a * (BLOCK / 2), ly = by - BLOCK / 2 + 3 + b * (BLOCK / 2), sw = BLOCK / 2 - 6 - rnd() * 6, sd = BLOCK / 2 - 6 - rnd() * 6;
-    const hgt = (10 + rnd() * 26) * (far === 1 ? 1 : 1.4), m = cityMats[Math.floor(rnd() * cityMats.length)];
-    facadeBox(cityGroup, lx, ly, lx + sw, ly + sd, 0.18, hgt, m, 3, 3.4);
-    box(cityGroup, lx, ly, lx + sw, ly + sd, hgt, hgt + 0.4, roofM);
-    if (rnd() < 0.5) box(cityGroup, lx + sw * 0.3, ly + sd * 0.3, lx + sw * 0.6, ly + sd * 0.55, hgt + 0.4, hgt + 2.2, mat('#b9b6c8'));
+    const hgt = (12 + rnd() * 26) * (far === 1 ? 1 : 1.45), m = cityMats[Math.floor(rnd() * cityMats.length)], kind = rnd();
+    cityBuilding(lx, ly, sw, sd, hgt, m, kind);
     if (rnd() < 0.6) trees.push([lx + sw + 1.6, ly + 1.5, 0.18, 0.8]);
   }
 }
@@ -1330,7 +1378,8 @@ function render(t) {
   // glow: soft by day so walls don't wash out, strong neon at night
   bloom.strength = 0.22 + 0.5 * N; bloom.threshold = 0.95 - 0.12 * N; bloom.radius = 0.4 + 0.1 * N;
   roomLights.forEach(l => { l.intensity = 30 * N; }); planetM.emissiveIntensity = 0.25 + 1.2 * N;
-  [podGlass, towGlass, bandM, ...cityMats].forEach(m => { m.emissiveIntensity = 1.3 * N; }); tileGlass.emissiveIntensity = 0.5 * N; ledM.emissiveIntensity = 0.5 + 2.2 * N; orangeM.emissiveIntensity = 0.1 + 0.4 * N;
+  [podGlass, towGlass, bandM, ...cityMats, ...roundMats].forEach(m => { m.emissiveIntensity = 1.3 * N; });
+  cityNeon.forEach(m => { m.emissiveIntensity = 0.35 + 1.6 * N; }); adMats.forEach(m => { m.emissiveIntensity = 0.45 + 0.6 * N; }); glassCap.emissiveIntensity = 0.2 + 1.0 * N; tileGlass.emissiveIntensity = 0.5 * N; ledM.emissiveIntensity = 0.5 + 2.2 * N; orangeM.emissiveIntensity = 0.1 + 0.4 * N;
   signMats.forEach(m => { m.emissiveIntensity = 0.12 + 0.6 * N; });
   animSky(t, dt, N);
   bulbM.emissiveIntensity = 0.2 + 2.5 * N;
